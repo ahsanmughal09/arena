@@ -72,11 +72,25 @@ function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 
 export default function Board6P({ gameState, myColor, onMoveToken }) {
   const [activePopup, setActivePopup] = useState(null);
   const [displaySteps, setDisplaySteps] = useState({});
+  const [capturedLocks, setCapturedLocks] = useState({});
 
   useEffect(() => {
     const anim = requestAnimationFrame(() => setActivePopup(null));
     return () => cancelAnimationFrame(anim);
   }, [gameState?.activeColor, gameState?.dicePool?.length]);
+
+  // Synchronously lock captured token's starting step when a capture move occurs
+  useEffect(() => {
+    const action = gameState?.lastAction;
+    if (action && action.type === 'MOVE' && action.captured) {
+      const capKey = `${action.captured.color}-${action.captured.tokenIndex}`;
+      if (action.captured.oldStep !== undefined) {
+        setTimeout(() => {
+          setCapturedLocks(prev => ({ ...prev, [capKey]: action.captured.oldStep }));
+        }, 0);
+      }
+    }
+  }, [gameState?.lastAction]);
 
   // Step-by-Step animated movement & capture return loop for 6P
   useEffect(() => {
@@ -115,6 +129,11 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
             setDisplaySteps(prev => ({ ...prev, [capKey]: capStep }));
             if (capStep <= -1) {
               clearInterval(capInterval);
+              setCapturedLocks(prev => {
+                const next = { ...prev };
+                delete next[capKey];
+                return next;
+              });
               setDisplaySteps(prev => {
                 const next = { ...prev };
                 delete next[capKey];
@@ -226,9 +245,12 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
       if (!player) return;
 
       player.tokens.forEach((step, tIdx) => {
-        const stepToRender = displaySteps[`${color}-${tIdx}`] !== undefined 
-          ? displaySteps[`${color}-${tIdx}`] 
-          : step;
+        const tokenKey = `${color}-${tIdx}`;
+        const stepToRender = displaySteps[tokenKey] !== undefined 
+          ? displaySteps[tokenKey] 
+          : (capturedLocks[tokenKey] !== undefined 
+              ? capturedLocks[tokenKey] 
+              : step);
 
         let key;
         let basePos = { x: 400, y: 400 };
@@ -284,9 +306,30 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
   return (
     <div 
       onClick={() => setActivePopup(null)}
-      style={{ position: 'relative', width: '100%', maxWidth: 'min(700px, calc(100vh - 100px))', margin: '0 auto' }}
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        maxWidth: 'calc(100vh - 65px)',
+        maxHeight: 'calc(100vh - 65px)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        margin: '0 auto'
+      }}
     >
-      <svg viewBox="0 0 800 800" style={{ width: '100%', height: 'auto', borderRadius: '20px', background: '#0F172A', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}>
+      <svg 
+        viewBox="0 0 800 800" 
+        style={{ 
+          width: '100%', 
+          height: '100%', 
+          maxHeight: 'calc(100vh - 65px)', 
+          borderRadius: '24px', 
+          background: 'radial-gradient(circle at center, #1E293B 0%, #0F172A 100%)', 
+          border: '2px solid rgba(99, 102, 241, 0.4)',
+          boxShadow: '0 20px 50px rgba(0,0,0,0.6), inset 0 0 30px rgba(99, 102, 241, 0.15)' 
+        }}
+      >
         
         {/* Outer Hexagon Background */}
         <polygon 
@@ -307,17 +350,18 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
         {/* 72 Track Spots */}
         {Array.from({ length: 72 }).map((_, idx) => {
           const coords = getTrackCoords(idx);
-          const isStar = (idx % 12 === 0) || (idx % 12 === 8);
           const isStart = (idx % 12 === 0);
+          const isSafe8th = (idx % 12 === 8);
+          const isStar = isStart || isSafe8th;
           const colorIdx = Math.floor(idx / 12);
           const colorName = PLAYER_COLORS[colorIdx];
-          const fillColor = isStart ? COLOR_HEX_6P[colorName] : (isStar ? '#334155' : '#0F172A');
+          const fillColor = isStar ? COLOR_HEX_6P[colorName] : '#0F172A';
 
           return (
             <g key={`spot-${idx}`}>
-              <circle cx={coords.x} cy={coords.y} r="15" fill={fillColor} opacity={isStart ? 0.95 : 0.85} stroke="#334155" strokeWidth="1.5" />
-              {isStar && !isStart && (
-                <text x={coords.x} y={coords.y + 5} fill="#F8FAFC" fontSize="14" textAnchor="middle" opacity="0.7">★</text>
+              <circle cx={coords.x} cy={coords.y} r="15" fill={fillColor} opacity={isStar ? 0.9 : 0.85} stroke="#334155" strokeWidth="1.5" />
+              {isSafe8th && (
+                <text x={coords.x} y={coords.y + 5} fill="#F8FAFC" fontSize="14" textAnchor="middle" opacity="0.8">★</text>
               )}
             </g>
           );

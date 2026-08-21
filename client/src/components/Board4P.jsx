@@ -105,11 +105,25 @@ function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 
 export default function Board4P({ gameState, myColor, onMoveToken }) {
   const [activePopup, setActivePopup] = useState(null);
   const [displaySteps, setDisplaySteps] = useState({});
+  const [capturedLocks, setCapturedLocks] = useState({});
 
   useEffect(() => {
     const anim = requestAnimationFrame(() => setActivePopup(null));
     return () => cancelAnimationFrame(anim);
   }, [gameState?.activeColor, gameState?.dicePool?.length]);
+
+  // Synchronously lock captured token's starting step when a capture move occurs
+  useEffect(() => {
+    const action = gameState?.lastAction;
+    if (action && action.type === 'MOVE' && action.captured) {
+      const capKey = `${action.captured.color}-${action.captured.tokenIndex}`;
+      if (action.captured.oldStep !== undefined) {
+        setTimeout(() => {
+          setCapturedLocks(prev => ({ ...prev, [capKey]: action.captured.oldStep }));
+        }, 0);
+      }
+    }
+  }, [gameState?.lastAction]);
 
   // Step-by-Step animated movement & capture return loop
   useEffect(() => {
@@ -148,6 +162,11 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
             setDisplaySteps(prev => ({ ...prev, [capKey]: capStep }));
             if (capStep <= -1) {
               clearInterval(capInterval);
+              setCapturedLocks(prev => {
+                const next = { ...prev };
+                delete next[capKey];
+                return next;
+              });
               setDisplaySteps(prev => {
                 const next = { ...prev };
                 delete next[capKey];
@@ -215,9 +234,12 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
       if (!player) return;
 
       player.tokens.forEach((step, tIdx) => {
-        const stepToRender = displaySteps[`${color}-${tIdx}`] !== undefined 
-          ? displaySteps[`${color}-${tIdx}`] 
-          : step;
+        const tokenKey = `${color}-${tIdx}`;
+        const stepToRender = displaySteps[tokenKey] !== undefined 
+          ? displaySteps[tokenKey] 
+          : (capturedLocks[tokenKey] !== undefined 
+              ? capturedLocks[tokenKey] 
+              : step);
 
         let key;
         let baseCx = 300;
@@ -269,9 +291,30 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
   return (
     <div 
       onClick={() => setActivePopup(null)}
-      style={{ position: 'relative', width: '100%', maxWidth: 'min(560px, calc(100vh - 100px))', margin: '0 auto' }}
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        maxWidth: 'calc(100vh - 65px)',
+        maxHeight: 'calc(100vh - 65px)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        margin: '0 auto'
+      }}
     >
-      <svg viewBox="0 0 600 600" style={{ width: '100%', height: 'auto', borderRadius: '16px', background: '#0F172A', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}>
+      <svg 
+        viewBox="0 0 600 600" 
+        style={{ 
+          width: '100%', 
+          height: '100%', 
+          maxHeight: 'calc(100vh - 65px)', 
+          borderRadius: '20px', 
+          background: 'radial-gradient(circle at center, #1E293B 0%, #0F172A 100%)', 
+          border: '2px solid rgba(99, 102, 241, 0.4)',
+          boxShadow: '0 20px 50px rgba(0,0,0,0.6), inset 0 0 30px rgba(99, 102, 241, 0.15)' 
+        }}
+      >
         
         {/* Background Grid Cells */}
         <defs>
@@ -310,22 +353,16 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
 
         {/* Track Grid Lines */}
         {MAIN_TRACK_4P.map((cell, idx) => {
-          const isRedStart = idx === 0;
-          const isGreenStart = idx === 13;
-          const isYellowStart = idx === 26;
-          const isBlueStart = idx === 39;
-          const isSafe8thSquare = [8, 21, 34, 47].includes(idx);
-          
+          // Color start spot & safe spot 5 steps before each color's opening with that color's hex
           let fillColor = '#1E293B';
-          if (isRedStart) fillColor = '#FF4757';
-          else if (isGreenStart) fillColor = '#2ED573';
-          else if (isYellowStart) fillColor = '#FFA502';
-          else if (isBlueStart) fillColor = '#1E90FF';
-          else if (isSafe8thSquare) fillColor = '#334155';
+          if (idx === 0 || idx === 47) fillColor = '#FF4757'; // Red domain (Start 0 & Safe 47)
+          else if (idx === 13 || idx === 8) fillColor = '#2ED573'; // Green domain (Start 13 & Safe 8)
+          else if (idx === 26 || idx === 21) fillColor = '#FFA502'; // Yellow domain (Start 26 & Safe 21)
+          else if (idx === 39 || idx === 34) fillColor = '#1E90FF'; // Blue domain (Start 39 & Safe 34)
 
           return (
             <g key={`track-${idx}`}>
-              <rect x={cell.c * 40} y={cell.r * 40} width="40" height="40" fill={fillColor} opacity={fillColor === '#1E293B' ? 0.9 : 0.8} stroke="#334155" strokeWidth="1" />
+              <rect x={cell.c * 40} y={cell.r * 40} width="40" height="40" fill={fillColor} opacity={fillColor === '#1E293B' ? 0.9 : 0.85} stroke="#334155" strokeWidth="1" />
             </g>
           );
         })}

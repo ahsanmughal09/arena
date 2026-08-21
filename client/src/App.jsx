@@ -206,15 +206,15 @@ export default function App() {
 
       {/* Active Game View */}
       {view === 'game' && gameState && (
-        <div style={{ height: '100vh', maxHeight: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '12px 20px', boxSizing: 'border-box', gap: '12px' }}>
+        <div style={{ height: '100vh', maxHeight: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '6px 12px', boxSizing: 'border-box', gap: '8px' }}>
           
           {/* Top Bar / Header */}
-          <div className="glass-panel" style={{ padding: '8px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <h2 style={{ fontSize: '1.3rem', fontWeight: 800, background: 'linear-gradient(135deg, #FFF, #818CF8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          <div className="glass-panel" style={{ padding: '6px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: 800, background: 'linear-gradient(135deg, #FFF, #818CF8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                 LUDO {gameState.mode} ({gameState.teamMode.toUpperCase()})
               </h2>
-              <span style={{ fontSize: '0.85rem', color: '#CBD5E1', background: 'rgba(255,255,255,0.08)', padding: '4px 12px', borderRadius: '12px' }}>
+              <span style={{ fontSize: '0.8rem', color: '#CBD5E1', background: 'rgba(255,255,255,0.08)', padding: '3px 10px', borderRadius: '10px' }}>
                 Room: <strong style={{ color: '#818CF8' }}>{roomCode}</strong>
               </span>
               {gameState.customRules?.diceCount === 2 && (
@@ -229,9 +229,9 @@ export default function App() {
               )}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{ fontSize: '0.85rem', color: '#94A3B8' }}>Your Color:</span>
-              <span style={{ fontWeight: 700, color: `#${myColor}`, background: 'rgba(30, 41, 59, 0.8)', padding: '4px 12px', borderRadius: '12px', textTransform: 'uppercase' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '0.8rem', color: '#94A3B8' }}>Your Color:</span>
+              <span style={{ fontWeight: 700, color: `#${myColor}`, background: 'rgba(30, 41, 59, 0.8)', padding: '3px 10px', borderRadius: '10px', textTransform: 'uppercase', fontSize: '0.85rem' }}>
                 {myColor}
               </span>
               <button 
@@ -241,23 +241,23 @@ export default function App() {
                   border: '1px solid rgba(239, 68, 68, 0.5)',
                   color: '#EF4444',
                   fontWeight: 700,
-                  fontSize: '0.85rem',
-                  padding: '6px 14px',
-                  borderRadius: '12px',
+                  fontSize: '0.8rem',
+                  padding: '4px 10px',
+                  borderRadius: '10px',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
+                  gap: '4px',
                   transition: 'all 0.2s ease'
                 }}
               >
-                🚪 Surrender / Leave
+                🚪 Leave
               </button>
             </div>
           </div>
 
           {/* Main Game Layout (No Scroll Fit Grid) */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 280px) 1fr minmax(280px, 320px)', gap: '16px', flex: 1, minHeight: 0, alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr 220px', gap: '10px', flex: 1, minHeight: 0, alignItems: 'center' }}>
             
             {/* Left Column: Player Cards */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '100%', overflowY: 'auto' }}>
