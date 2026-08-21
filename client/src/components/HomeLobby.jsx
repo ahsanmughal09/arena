@@ -12,6 +12,11 @@ export default function HomeLobby({ onCreateRoom, onJoinRoom }) {
   const [teamMode, setTeamMode] = useState('2v2'); // 4P: 'solo', '2v2' | 6P: 'solo', '3v3', '2v2v2'
   const [turnTimer, setTurnTimer] = useState('30');
 
+  // Custom House Rules Toggles
+  const [extraTurnOnKill, setExtraTurnOnKill] = useState(true);
+  const [extraTurnOnHome, setExtraTurnOnHome] = useState(true);
+  const [killRequiredToEnterHome, setKillRequiredToEnterHome] = useState(true);
+
   const handleModeChange = (newMode) => {
     sounds.playClick();
     setMode(newMode);
@@ -29,7 +34,15 @@ export default function HomeLobby({ onCreateRoom, onJoinRoom }) {
       return;
     }
     sounds.playClick();
-    onCreateRoom({ name: name.trim(), mode, teamMode, turnTimer });
+    onCreateRoom({ 
+      name: name.trim(), 
+      mode, 
+      teamMode, 
+      turnTimer, 
+      extraTurnOnKill, 
+      extraTurnOnHome, 
+      killRequiredToEnterHome 
+    });
   };
 
   const handleJoinSubmit = (e) => {
@@ -188,7 +201,7 @@ export default function HomeLobby({ onCreateRoom, onJoinRoom }) {
             </div>
 
             {/* Turn Timer Selection */}
-            <div style={{ marginBottom: '28px' }}>
+            <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#CBD5E1', marginBottom: '8px' }}>
                 <Timer size={16} color="#FFA502" /> Turn Countdown Timer
               </label>
@@ -217,6 +230,45 @@ export default function HomeLobby({ onCreateRoom, onJoinRoom }) {
                 >
                   Unlimited
                 </button>
+              </div>
+            </div>
+
+            {/* Custom House Rules Section */}
+            <div style={{ marginBottom: '28px', background: 'rgba(15, 23, 42, 0.5)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 700, color: '#818CF8', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                ⚙️ Custom House Rules
+              </label>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.85rem', color: '#E2E8F0', cursor: 'pointer' }}>
+                  <span>⚡ Extra Turn on Kill (Capture)</span>
+                  <input 
+                    type="checkbox" 
+                    checked={extraTurnOnKill} 
+                    onChange={(e) => { sounds.playClick(); setExtraTurnOnKill(e.target.checked); }} 
+                    style={{ width: '18px', height: '18px', accentColor: '#6366F1', cursor: 'pointer' }}
+                  />
+                </label>
+
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.85rem', color: '#E2E8F0', cursor: 'pointer' }}>
+                  <span>🏠 Extra Turn on Home Finish</span>
+                  <input 
+                    type="checkbox" 
+                    checked={extraTurnOnHome} 
+                    onChange={(e) => { sounds.playClick(); setExtraTurnOnHome(e.target.checked); }} 
+                    style={{ width: '18px', height: '18px', accentColor: '#6366F1', cursor: 'pointer' }}
+                  />
+                </label>
+
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.85rem', color: '#E2E8F0', cursor: 'pointer' }}>
+                  <span>🎯 Must Kill Opponent to Enter Home</span>
+                  <input 
+                    type="checkbox" 
+                    checked={killRequiredToEnterHome} 
+                    onChange={(e) => { sounds.playClick(); setKillRequiredToEnterHome(e.target.checked); }} 
+                    style={{ width: '18px', height: '18px', accentColor: '#6366F1', cursor: 'pointer' }}
+                  />
+                </label>
               </div>
             </div>
 

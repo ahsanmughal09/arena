@@ -71,6 +71,9 @@ export default function PlayerCard({ color, player, isActive, isMe, teamName, fi
             <span style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Shield size={12} color={mainHex} /> {teamName || color.toUpperCase()}
             </span>
+            <span style={{ fontSize: '0.75rem', color: (player.kills || 0) > 0 ? '#2ED573' : '#FF6B81', fontWeight: 600 }}>
+              🎯 {player.kills || 0} Kills
+            </span>
           </div>
         </div>
       </div>

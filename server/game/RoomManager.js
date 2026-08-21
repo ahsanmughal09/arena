@@ -17,8 +17,12 @@ class RoomManager {
     const mode = settings.mode || '4P'; // '4P' or '6P'
     const teamMode = settings.teamMode || 'solo'; // 'solo', '2v2', '3v3', '2v2v2'
     const turnTimer = parseInt(settings.turnTimer || 30, 10);
+    const extraTurnOnKill = settings.extraTurnOnKill !== false;
+    const extraTurnOnHome = settings.extraTurnOnHome !== false;
+    const killRequiredToEnterHome = settings.killRequiredToEnterHome !== false;
 
-    const engine = new LudoEngine(mode, teamMode, turnTimer);
+    const customRules = { extraTurnOnKill, extraTurnOnHome, killRequiredToEnterHome };
+    const engine = new LudoEngine(mode, teamMode, turnTimer, customRules);
     
     // Assign host to first color ('red')
     engine.addPlayer('red', hostSocket.id, hostName);
@@ -27,7 +31,7 @@ class RoomManager {
       code: roomCode,
       hostId: hostSocket.id,
       engine,
-      settings: { mode, teamMode, turnTimer },
+      settings: { mode, teamMode, turnTimer, ...customRules },
       playerSlots: this.initSlots(engine.colors, hostSocket.id, hostName),
       chatHistory: [],
       timerInterval: null,

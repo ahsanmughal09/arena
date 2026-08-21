@@ -1,19 +1,25 @@
 /**
  * Core Ludo Engine supporting 4-Player Square & 6-Player Hexagonal modes,
  * custom diagonal teaming, server-authoritative move validation, and turn cycling.
- * Features Roll Balance (Dice Stacking) mechanic when rolling 6s.
- * Capturing an enemy token awards an extra turn (extra roll), not an extra 6.
+ * Features Roll Balance (Dice Stacking) mechanic when rolling 6s,
+ * and customizable house rules (extra turn on kill/home, kill required to enter home).
  */
 
 const PLAYER_COLORS_4P = ['red', 'green', 'yellow', 'blue'];
 const PLAYER_COLORS_6P = ['red', 'green', 'yellow', 'blue', 'orange', 'purple'];
 
 class LudoEngine {
-  constructor(mode = '4P', teamMode = 'solo', turnTimer = 30) {
+  constructor(mode = '4P', teamMode = 'solo', turnTimer = 30, customRules = {}) {
     this.mode = mode; // '4P' or '6P'
     this.teamMode = teamMode; // 4P: 'solo', '2v2' | 6P: 'solo', '3v3', '2v2v2'
     this.turnTimer = turnTimer;
     
+    this.customRules = {
+      extraTurnOnKill: customRules.extraTurnOnKill !== false,
+      extraTurnOnHome: customRules.extraTurnOnHome !== false,
+      killRequiredToEnterHome: customRules.killRequiredToEnterHome !== false
+    };
+
     this.colors = mode === '4P' ? PLAYER_COLORS_4P : PLAYER_COLORS_6P;
     this.trackLength = mode === '4P' ? 52 : 72;
     this.homeLength = 6;
@@ -40,7 +46,7 @@ class LudoEngine {
     // Teams mapping
     this.teams = this.initTeams();
 
-    // Player states: { [color]: { name, socketId, connected, tokens: [-1, -1, -1, -1] } }
+    // Player states: { [color]: { name, socketId, connected, kills, tokens: [-1, -1, -1, -1] } }
     this.players = {};
     this.activePlayerIndex = 0;
     this.dicePool = [];
@@ -96,6 +102,7 @@ class LudoEngine {
       name: name || color.toUpperCase(),
       socketId,
       connected: true,
+      kills: 0,
       tokens: [-1, -1, -1, -1] // step index for 4 tokens
     };
     return true;
@@ -202,8 +209,12 @@ class LudoEngine {
   calculateValidMoves(color, roll) {
     const player = this.players[color];
     if (!player || !roll) return [];
-    
+
     const valid = [];
+    // Max step index a token can reach without a kill when killRequiredToEnterHome is active
+    const maxStepWithoutKill = this.mode === '4P' ? 47 : 68;
+    const canPassLastSafe = !this.customRules.killRequiredToEnterHome || ((player.kills || 0) > 0);
+
     player.tokens.forEach((step, tokenIndex) => {
       if (step === -1) {
         // Token in yard: needs 6 to enter start spot
@@ -214,7 +225,9 @@ class LudoEngine {
         // Token on board or home stretch
         const newStep = step + roll;
         if (newStep <= this.finishStep) {
-          valid.push(tokenIndex);
+          if (canPassLastSafe || newStep <= maxStepWithoutKill) {
+            valid.push(tokenIndex);
+          }
         }
       }
     });
@@ -266,11 +279,16 @@ class LudoEngine {
       captured = this.checkCapture(color, newPos.step);
     }
 
+    const reachesHome = (newStep === this.finishStep && oldStep !== this.finishStep);
+
     // Remove executed roll from dicePool
     this.dicePool.splice(useIndex, 1);
 
-    // If captured an enemy token, award an EXTRA TURN (bonus roll opportunity)!
-    if (captured !== null) {
+    // Check extra turn rules
+    const extraOnKill = (captured !== null) && this.customRules.extraTurnOnKill;
+    const extraOnHome = reachesHome && this.customRules.extraTurnOnHome;
+
+    if (extraOnKill || extraOnHome) {
       this.hasExtraTurn = true;
     }
 
@@ -281,7 +299,8 @@ class LudoEngine {
       oldStep,
       newStep,
       rolled: roll,
-      captured
+      captured,
+      reachesHome
     };
 
     // Check Win Condition
@@ -305,7 +324,7 @@ class LudoEngine {
         }
       }
     } else {
-      // Pool empty -> check extra turn from capture or pass turn
+      // Pool empty -> check extra turn or pass turn
       if (this.hasExtraTurn) {
         this.grantExtraTurn();
       } else {
@@ -343,6 +362,9 @@ class LudoEngine {
         if (globalPos.type === 'MAIN' && globalPos.step === targetMainStep) {
           // Send captured token back to yard (-1)
           otherPlayer.tokens[tIdx] = -1;
+          if (this.players[movingColor]) {
+            this.players[movingColor].kills = (this.players[movingColor].kills || 0) + 1;
+          }
           return { color, tokenIndex: tIdx };
         }
       }
@@ -392,6 +414,7 @@ class LudoEngine {
       mode: this.mode,
       teamMode: this.teamMode,
       turnTimer: this.turnTimer,
+      customRules: this.customRules,
       colors: this.colors,
       teams: this.teams,
       players: this.players,

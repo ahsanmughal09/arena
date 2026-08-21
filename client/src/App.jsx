@@ -103,8 +103,8 @@ export default function App() {
   }, []);
 
   // Handlers
-  const handleCreateRoom = ({ name, mode, teamMode, turnTimer }) => {
-    socket.emit('CREATE_ROOM', { name, mode, teamMode, turnTimer }, (res) => {
+  const handleCreateRoom = ({ name, mode, teamMode, turnTimer, extraTurnOnKill, extraTurnOnHome, killRequiredToEnterHome }) => {
+    socket.emit('CREATE_ROOM', { name, mode, teamMode, turnTimer, extraTurnOnKill, extraTurnOnHome, killRequiredToEnterHome }, (res) => {
       if (res.success) {
         setRoomCode(res.roomCode);
         setMyColor(res.color);
