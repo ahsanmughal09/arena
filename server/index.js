@@ -1,0 +1,190 @@
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const cors = require('cors');
+const RoomManager = require('./game/RoomManager');
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  }
+});
+
+const roomManager = new RoomManager(io);
+
+// Health check API
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', time: new Date().toISOString() });
+});
+
+io.on('connection', (socket) => {
+  console.log(`Socket connected: ${socket.id}`);
+
+  // Create Room
+  socket.on('CREATE_ROOM', ({ name, mode, teamMode, turnTimer }, callback) => {
+    try {
+      const room = roomManager.createRoom(socket, name, { mode, teamMode, turnTimer });
+      const response = {
+        roomCode: room.code,
+        color: 'red',
+        slots: room.playerSlots,
+        settings: room.settings,
+        state: room.engine.getGameState()
+      };
+      if (typeof callback === 'function') callback({ success: true, ...response });
+      io.to(room.code).emit('ROOM_UPDATED', { slots: room.playerSlots, settings: room.settings });
+    } catch (err) {
+      if (typeof callback === 'function') callback({ success: false, error: err.message });
+    }
+  });
+
+  // Join Room
+  socket.on('JOIN_ROOM', ({ roomCode, name }, callback) => {
+    const result = roomManager.joinRoom(socket, roomCode, name);
+    if (result.error) {
+      if (typeof callback === 'function') callback({ success: false, error: result.error });
+      return;
+    }
+
+    const { room, color } = result;
+    const response = {
+      roomCode: room.code,
+      color,
+      slots: room.playerSlots,
+      settings: room.settings,
+      state: room.engine.getGameState()
+    };
+
+    if (typeof callback === 'function') callback({ success: true, ...response });
+
+    io.to(room.code).emit('ROOM_UPDATED', { slots: room.playerSlots, settings: room.settings });
+    io.to(room.code).emit('CHAT_MESSAGE', {
+      sender: 'System',
+      text: `${name} joined as ${color.toUpperCase()}`,
+      time: new Date().toLocaleTimeString()
+    });
+  });
+
+  // Start Game
+  socket.on('START_GAME', ({ roomCode }, callback) => {
+    const result = roomManager.startGame(socket.id, roomCode);
+    if (result.error) {
+      if (typeof callback === 'function') callback({ success: false, error: result.error });
+      return;
+    }
+
+    if (typeof callback === 'function') callback({ success: true });
+    io.to(roomCode).emit('GAME_STARTED', { state: result.room.engine.getGameState() });
+  });
+
+  // Select Roll from Balance
+  socket.on('SELECT_ROLL', ({ roomCode, rollIndex }) => {
+    const room = roomManager.rooms.get(roomCode);
+    if (!room || !room.engine.gameStarted) return;
+
+    const info = roomManager.socketToRoom.get(socket.id);
+    if (!info || info.color !== room.engine.getActiveColor()) return;
+
+    const success = room.engine.selectRoll(rollIndex);
+    if (success) {
+      io.to(roomCode).emit('GAME_STATE_UPDATE', { state: room.engine.getGameState() });
+    }
+  });
+
+  // Roll Dice
+  socket.on('ROLL_DICE', ({ roomCode }) => {
+    const room = roomManager.rooms.get(roomCode);
+    if (!room || !room.engine.gameStarted) return;
+
+    const info = roomManager.socketToRoom.get(socket.id);
+    if (!info || info.color !== room.engine.getActiveColor()) return;
+
+    const rollRes = room.engine.rollDice();
+    if (rollRes) {
+      roomManager.resetTimer(room);
+      io.to(roomCode).emit('DICE_ROLLED', {
+        color: info.color,
+        roll: rollRes.roll,
+        penalty: rollRes.penalty,
+        dicePool: rollRes.dicePool,
+        canRoll: rollRes.canRoll,
+        validMoves: rollRes.validMoves,
+        state: room.engine.getGameState()
+      });
+
+      // If rolling phase is done (canRoll === false) and NO valid moves exist for any roll in pool
+      if (!rollRes.canRoll && rollRes.validMoves.length === 0) {
+        setTimeout(() => {
+          if (!room.engine.gameOver) {
+            room.engine.nextTurn();
+            roomManager.resetTimer(room);
+            io.to(roomCode).emit('GAME_STATE_UPDATE', { state: room.engine.getGameState() });
+          }
+        }, 1100);
+      }
+    }
+  });
+
+  // Move Token
+  socket.on('MOVE_TOKEN', ({ roomCode, tokenIndex, rollIndex }) => {
+    const room = roomManager.rooms.get(roomCode);
+    if (!room || !room.engine.gameStarted) return;
+
+    const info = roomManager.socketToRoom.get(socket.id);
+    if (!info || info.color !== room.engine.getActiveColor()) return;
+
+    const moveRes = room.engine.moveToken(info.color, tokenIndex, rollIndex);
+    if (moveRes && moveRes.success) {
+      roomManager.resetTimer(room);
+      io.to(roomCode).emit('TOKEN_MOVED', {
+        color: info.color,
+        tokenIndex,
+        moveRes,
+        state: room.engine.getGameState()
+      });
+    }
+  });
+
+  // Send Chat / Reaction
+  socket.on('SEND_CHAT', ({ roomCode, text, emote }) => {
+    const info = roomManager.socketToRoom.get(socket.id);
+    if (!info) return;
+    const room = roomManager.rooms.get(roomCode);
+    if (!room) return;
+
+    const playerName = room.playerSlots[info.color]?.name || info.color;
+    const chatItem = {
+      sender: playerName,
+      color: info.color,
+      text: text || null,
+      emote: emote || null,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    room.chatHistory.push(chatItem);
+    if (room.chatHistory.length > 50) room.chatHistory.shift();
+
+    io.to(roomCode).emit('CHAT_MESSAGE', chatItem);
+  });
+
+  // Disconnect handler
+  socket.on('disconnect', () => {
+    console.log(`Socket disconnected: ${socket.id}`);
+    const res = roomManager.leaveRoom(socket.id);
+    if (res && !res.empty) {
+      io.to(res.roomCode).emit('ROOM_UPDATED', { slots: res.room.playerSlots, settings: res.room.settings });
+      io.to(res.roomCode).emit('GAME_STATE_UPDATE', { state: res.room.engine.getGameState() });
+    }
+  });
+});
+
+const PORT = process.env.PORT || 4000;
+server.listen(PORT, () => {
+  console.log(`Ludo Real-Time Server running on http://localhost:${PORT}`);
+});
