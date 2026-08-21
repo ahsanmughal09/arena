@@ -72,6 +72,36 @@ export default function App() {
     };
   }, [myColor]);
 
+  useEffect(() => {
+    // Attempt auto-rejoin from sessionStorage on refresh / reconnect
+    const savedSessionRaw = sessionStorage.getItem('ludo_session');
+    if (savedSessionRaw) {
+      try {
+        const { roomCode: savedCode, color: savedColor, name: savedName } = JSON.parse(savedSessionRaw);
+        if (savedCode && savedColor) {
+          socket.emit('REJOIN_ROOM', { roomCode: savedCode, color: savedColor, name: savedName }, (res) => {
+            if (res && res.success) {
+              setRoomCode(res.roomCode);
+              setMyColor(res.color);
+              setSlots(res.slots);
+              setSettings(res.settings);
+              setGameState(res.state);
+              if (res.state && res.state.gameStarted) {
+                setView('game');
+              } else {
+                setView('lobby');
+              }
+            } else {
+              sessionStorage.removeItem('ludo_session');
+            }
+          });
+        }
+      } catch {
+        sessionStorage.removeItem('ludo_session');
+      }
+    }
+  }, []);
+
   // Handlers
   const handleCreateRoom = ({ name, mode, teamMode, turnTimer }) => {
     socket.emit('CREATE_ROOM', { name, mode, teamMode, turnTimer }, (res) => {
@@ -82,6 +112,7 @@ export default function App() {
         setSettings(res.settings);
         setGameState(res.state);
         setView('lobby');
+        sessionStorage.setItem('ludo_session', JSON.stringify({ roomCode: res.roomCode, color: res.color, name }));
       } else {
         alert(res.error || 'Failed to create room.');
       }
@@ -97,6 +128,7 @@ export default function App() {
         setSettings(res.settings);
         setGameState(res.state);
         setView('lobby');
+        sessionStorage.setItem('ludo_session', JSON.stringify({ roomCode: res.roomCode, color: res.color, name }));
       } else {
         alert(res.error || 'Failed to join room.');
       }
@@ -119,11 +151,13 @@ export default function App() {
     socket.emit('SELECT_ROLL', { roomCode, rollIndex });
   };
 
-  const handleMoveToken = (tokenIndex) => {
-    socket.emit('MOVE_TOKEN', { roomCode, tokenIndex, rollIndex: gameState.selectedRollIndex });
+  const handleMoveToken = (tokenIndex, explicitRollIndex = null) => {
+    const rIdx = explicitRollIndex !== null ? explicitRollIndex : (gameState?.selectedRollIndex || 0);
+    socket.emit('MOVE_TOKEN', { roomCode, tokenIndex, rollIndex: rIdx });
   };
 
   const handlePlayAgain = () => {
+    sessionStorage.removeItem('ludo_session');
     setView('home');
     setRoomCode('');
     setGameState(null);

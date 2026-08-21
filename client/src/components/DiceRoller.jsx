@@ -9,8 +9,7 @@ export default function DiceRoller({
   isMyTurn, 
   activeColor, 
   onRollDice, 
-  onSelectRoll, 
-  validMoves 
+  onSelectRoll 
 }) {
   const [rolling, setRolling] = useState(false);
   const [showingSixDelay, setShowingSixDelay] = useState(false);
@@ -142,8 +141,8 @@ export default function DiceRoller({
             <span style={{ color: '#2ED573', animation: 'pulse 1s infinite' }}>
               {dicePool.length > 0 ? '🎲 Rolled 6! Tap Dice to Roll Again!' : '⚡ Tap Dice to Roll!'}
             </span>
-          ) : validMoves && validMoves.length > 0 ? (
-            <span style={{ color: '#FFA502' }}>👉 Select a roll balance & click a glowing token!</span>
+          ) : (dicePool && dicePool.length > 0) ? (
+            <span style={{ color: '#FFA502' }}>👉 Tap any glowing token on the board to move!</span>
           ) : (
             <span style={{ color: '#94A3B8' }}>No valid moves available.</span>
           )

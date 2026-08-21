@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { sounds } from '../utils/audio';
 
 const PLAYER_COLORS = ['red', 'green', 'yellow', 'blue', 'orange', 'purple'];
@@ -36,10 +36,42 @@ function getOccupantOffset(occupantIndex, totalOccupants) {
   return { ...offsets[occupantIndex % 4], r: 8.5 };
 }
 
+function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 77) {
+  if (!player || !player.tokens || !dicePool || dicePool.length === 0) return [];
+  const step = player.tokens[tokenIndex];
+  if (step === undefined) return [];
+
+  const options = [];
+  const seenValues = new Set();
+
+  dicePool.forEach((roll, rIdx) => {
+    let isValid = false;
+    if (step === -1) {
+      if (roll === 6) isValid = true;
+    } else if (step < finishStep) {
+      if (step + roll <= finishStep) isValid = true;
+    }
+
+    if (isValid && !seenValues.has(roll)) {
+      seenValues.add(roll);
+      options.push({ rollIndex: rIdx, val: roll });
+    }
+  });
+
+  return options;
+}
+
 export default function Board6P({ gameState, myColor, onMoveToken }) {
+  const [activePopup, setActivePopup] = useState(null);
+
+  useEffect(() => {
+    const anim = requestAnimationFrame(() => setActivePopup(null));
+    return () => cancelAnimationFrame(anim);
+  }, [gameState?.activeColor, gameState?.dicePool?.length]);
+
   if (!gameState) return null;
 
-  const { players, validMoves, activeColor } = gameState;
+  const { players, activeColor } = gameState;
   const isMyTurn = (activeColor === myColor);
 
   const cx = 400;
@@ -87,11 +119,25 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
     return { x: baseX + off.x, y: baseY + off.y };
   };
 
-  const handleTokenClick = (color, tokenIndex) => {
-    if (!isMyTurn || color !== activeColor) return;
-    if (validMoves.includes(tokenIndex)) {
+  const handleTokenClick = (color, tokenIndex, tokCx, tokCy) => {
+    if (!isMyTurn || color !== activeColor || gameState.canRoll) return;
+
+    const player = players[color];
+    const options = getValidRollOptionsForToken(player, tokenIndex, gameState.dicePool, 77);
+
+    if (options.length === 0) return;
+
+    if (options.length === 1) {
+      setActivePopup(null);
       sounds.playTokenStep();
-      onMoveToken(tokenIndex);
+      onMoveToken(tokenIndex, options[0].rollIndex);
+    } else {
+      sounds.playClick();
+      setActivePopup({
+        tokenIndex,
+        coords: { x: tokCx, y: tokCy },
+        options
+      });
     }
   };
 
@@ -145,7 +191,10 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
   }
 
   return (
-    <div style={{ position: 'relative', width: '100%', maxWidth: '720px', margin: '0 auto' }}>
+    <div 
+      onClick={() => setActivePopup(null)}
+      style={{ position: 'relative', width: '100%', maxWidth: '720px', margin: '0 auto' }}
+    >
       <svg viewBox="0 0 800 800" style={{ width: '100%', height: 'auto', borderRadius: '24px', background: '#0F172A', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }}>
         
         <defs>
@@ -250,13 +299,20 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
           const tokCy = tok.baseCy + offsetInfo.dy;
           const r = offsetInfo.r;
 
-          const isMoveable = isMyTurn && tok.color === activeColor && validMoves.includes(tok.tIdx);
+          const player = players[tok.color];
+          const options = (isMyTurn && tok.color === activeColor && !gameState.canRoll)
+            ? getValidRollOptionsForToken(player, tok.tIdx, gameState.dicePool, 77)
+            : [];
+          const isMoveable = options.length > 0;
           const colorHex = COLOR_HEX[tok.color] || '#FFF';
 
           return (
             <g 
               key={tok.key} 
-              onClick={() => handleTokenClick(tok.color, tok.tIdx)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleTokenClick(tok.color, tok.tIdx, tokCx, tokCy);
+              }}
               className={isMoveable ? 'token-g-moveable' : ''}
             >
               {/* Outer Pulsing Ring for Moveable Tokens */}
@@ -281,7 +337,6 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
                 stroke="#FFFFFF" 
                 strokeWidth="2" 
                 className="token-body"
-                style={{ transition: 'all 0.2s ease' }}
               />
               {/* Glossy Center Specular Dot */}
               <circle 
@@ -294,6 +349,43 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
             </g>
           );
         })}
+
+        {/* Contextual Roll Selection Popover near clicked token */}
+        {activePopup && (
+          <g 
+            transform={`translate(${activePopup.coords.x}, ${Math.max(40, activePopup.coords.y - 36)})`}
+          >
+            <rect 
+              x={- (activePopup.options.length * 38 + 12) / 2} 
+              y="-18" 
+              width={activePopup.options.length * 38 + 12} 
+              height="36" 
+              rx="18" 
+              fill="#0F172A" 
+              stroke="#6366F1" 
+              strokeWidth="2" 
+              filter="drop-shadow(0 8px 16px rgba(0,0,0,0.7))"
+            />
+            {activePopup.options.map((opt, idx) => {
+              const btnX = - (activePopup.options.length * 38) / 2 + idx * 38 + 19;
+              return (
+                <g 
+                  key={`opt-${idx}`} 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    sounds.playTokenStep();
+                    onMoveToken(activePopup.tokenIndex, opt.rollIndex);
+                    setActivePopup(null);
+                  }}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <circle cx={btnX} cy="0" r="14" fill={opt.val === 6 ? '#22C55E' : '#6366F1'} stroke="#FFFFFF" strokeWidth="1.5" />
+                  <text x={btnX} y="4" fill="#FFFFFF" fontSize="12" fontWeight="bold" textAnchor="middle">{opt.val}</text>
+                </g>
+              );
+            })}
+          </g>
+        )}
 
       </svg>
     </div>

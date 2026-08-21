@@ -67,6 +67,33 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('CHAT_MESSAGE', {
       sender: 'System',
       text: `${name} joined as ${color.toUpperCase()}`,
+    });
+  });
+
+  // Rejoin Room on Refresh / Reconnect
+  socket.on('REJOIN_ROOM', ({ roomCode, color, name }, callback) => {
+    const result = roomManager.rejoinRoom(socket, roomCode, color, name);
+    if (result.error) {
+      if (typeof callback === 'function') callback({ success: false, error: result.error });
+      return;
+    }
+
+    const { room, slots, settings, state } = result;
+    const response = {
+      roomCode: room.code,
+      color: result.color,
+      slots,
+      settings,
+      state
+    };
+
+    if (typeof callback === 'function') callback({ success: true, ...response });
+
+    io.to(room.code).emit('ROOM_UPDATED', { slots: room.playerSlots, settings: room.settings });
+    io.to(room.code).emit('GAME_STATE_UPDATE', { state: room.engine.getGameState() });
+    io.to(room.code).emit('CHAT_MESSAGE', {
+      sender: 'System',
+      text: `${name || result.color.toUpperCase()} reconnected`,
       time: new Date().toLocaleTimeString()
     });
   });

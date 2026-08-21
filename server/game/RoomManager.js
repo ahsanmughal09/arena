@@ -103,6 +103,41 @@ class RoomManager {
     return { room, color: freeColor };
   }
 
+  rejoinRoom(socket, roomCode, color, playerName) {
+    if (!roomCode || !color) return { error: 'Invalid room or color.' };
+
+    const room = this.rooms.get(roomCode.toUpperCase());
+    if (!room) return { error: 'Room not found or expired.' };
+
+    const { engine, playerSlots } = room;
+    const slot = playerSlots[color];
+    if (!slot) return { error: 'Invalid color slot for this room.' };
+
+    // Update slot with new socket and connected status
+    slot.socketId = socket.id;
+    slot.connected = true;
+    if (playerName) slot.name = playerName;
+
+    // Update engine player state
+    if (engine.players[color]) {
+      engine.players[color].socketId = socket.id;
+      engine.players[color].connected = true;
+    } else {
+      engine.addPlayer(color, socket.id, slot.name);
+    }
+
+    this.socketToRoom.set(socket.id, { roomCode: room.code, color });
+    socket.join(room.code);
+
+    return { 
+      room, 
+      color, 
+      slots: playerSlots, 
+      settings: room.settings, 
+      state: engine.getGameState() 
+    };
+  }
+
   leaveRoom(socketId) {
     const info = this.socketToRoom.get(socketId);
     if (!info) return null;
