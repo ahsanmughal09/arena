@@ -187,17 +187,22 @@ export default function App() {
 
       {/* Active Game View */}
       {view === 'game' && gameState && (
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '16px', display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
+        <div style={{ height: '100vh', maxHeight: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '12px 20px', boxSizing: 'border-box', gap: '12px' }}>
           
           {/* Top Bar / Header */}
-          <div className="glass-panel" style={{ padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="glass-panel" style={{ padding: '8px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <h2 style={{ fontSize: '1.4rem', fontWeight: 800, background: 'linear-gradient(135deg, #FFF, #818CF8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              <h2 style={{ fontSize: '1.3rem', fontWeight: 800, background: 'linear-gradient(135deg, #FFF, #818CF8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                 LUDO {gameState.mode} ({gameState.teamMode.toUpperCase()})
               </h2>
               <span style={{ fontSize: '0.85rem', color: '#CBD5E1', background: 'rgba(255,255,255,0.08)', padding: '4px 12px', borderRadius: '12px' }}>
                 Room: <strong style={{ color: '#818CF8' }}>{roomCode}</strong>
               </span>
+              {gameState.customRules?.killRequiredToEnterHome && (
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#FFA502', background: 'rgba(255, 165, 2, 0.15)', border: '1px solid rgba(255, 165, 2, 0.3)', padding: '2px 8px', borderRadius: '8px' }}>
+                  🎯 Kill Required for Home
+                </span>
+              )}
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -208,12 +213,12 @@ export default function App() {
             </div>
           </div>
 
-          {/* Main Game Layout (Grid) */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 320px) 1fr minmax(280px, 320px)', gap: '20px', alignItems: 'start' }}>
+          {/* Main Game Layout (No Scroll Fit Grid) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 280px) 1fr minmax(280px, 320px)', gap: '16px', flex: 1, minHeight: 0, alignItems: 'center' }}>
             
             {/* Left Column: Player Cards */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#94A3B8', marginBottom: '4px' }}>Players & Teams</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '100%', overflowY: 'auto' }}>
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#94A3B8', marginBottom: '2px' }}>Players & Teams</h3>
               {gameState.colors.map(color => (
                 <PlayerCard 
                   key={`card-${color}`}
@@ -229,36 +234,45 @@ export default function App() {
               ))}
             </div>
 
-            {/* Middle Column: Interactive Board & Dice Roller */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
+            {/* Middle Column: Interactive Board */}
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: 0 }}>
               {gameState.mode === '4P' ? (
                 <Board4P gameState={gameState} myColor={myColor} onMoveToken={handleMoveToken} />
               ) : (
                 <Board6P gameState={gameState} myColor={myColor} onMoveToken={handleMoveToken} />
               )}
-
-              {/* Dice Roller Controls */}
-              <DiceRoller 
-                currentDice={gameState.currentDice}
-                dicePool={gameState.dicePool}
-                selectedRollIndex={gameState.selectedRollIndex}
-                canRoll={gameState.canRoll}
-                isMyTurn={isMyTurn}
-                activeColor={gameState.activeColor}
-                onRollDice={handleRollDice}
-                onSelectRoll={handleSelectRoll}
-                validMoves={gameState.validMoves}
-              />
             </div>
 
-            {/* Right Column: Chat & Emoji Panel */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <ChatPanel 
-                roomCode={roomCode}
-                socket={socket}
-                chatMessages={chatMessages}
-                myColor={myColor}
-              />
+            {/* Right Column: Dice Roller (Top Right of Ludo) + Chat Panel (Bottom Right) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%', minHeight: 0 }}>
+              
+              {/* Dice Roller on Right Side of Ludo */}
+              <div className="glass-panel" style={{ padding: '14px', display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#818CF8', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  🎲 Dice Controls
+                </h3>
+                <DiceRoller 
+                  currentDice={gameState.currentDice}
+                  dicePool={gameState.dicePool}
+                  selectedRollIndex={gameState.selectedRollIndex}
+                  canRoll={gameState.canRoll}
+                  isMyTurn={isMyTurn}
+                  activeColor={gameState.activeColor}
+                  onRollDice={handleRollDice}
+                  onSelectRoll={handleSelectRoll}
+                />
+              </div>
+
+              {/* Chat Panel Below Dice Roller */}
+              <div style={{ flex: 1, minHeight: 0 }}>
+                <ChatPanel 
+                  roomCode={roomCode}
+                  socket={socket}
+                  chatMessages={chatMessages}
+                  myColor={myColor}
+                />
+              </div>
+
             </div>
 
           </div>

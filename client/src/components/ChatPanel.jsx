@@ -26,7 +26,7 @@ export default function ChatPanel({ roomCode, socket, chatMessages }) {
   };
 
   return (
-    <div className="glass-panel" style={{ height: '360px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="glass-panel" style={{ height: '100%', minHeight: '220px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ padding: '12px 16px', background: 'rgba(15, 23, 42, 0.6)', borderBottom: '1px solid var(--border-glass)', display: 'flex', alignItems: 'center', gap: '8px' }}>
         <MessageSquare size={18} color="#818CF8" />

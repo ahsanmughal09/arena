@@ -190,7 +190,7 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
   return (
     <div 
       onClick={() => setActivePopup(null)}
-      style={{ position: 'relative', width: '100%', maxWidth: '600px', margin: '0 auto' }}
+      style={{ position: 'relative', width: '100%', maxWidth: 'min(560px, calc(100vh - 100px))', margin: '0 auto' }}
     >
       <svg viewBox="0 0 600 600" style={{ width: '100%', height: 'auto', borderRadius: '16px', background: '#0F172A', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}>
         
