@@ -69,10 +69,13 @@ function getOccupantOffset(occupantIndex, totalOccupants) {
   return { ...offsets[occupantIndex % 4], r: 8.5 };
 }
 
-function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 57) {
+function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 56, killRequired = false) {
   if (!player || !player.tokens || !dicePool || dicePool.length === 0) return [];
   const step = player.tokens[tokenIndex];
   if (step === undefined) return [];
+
+  const maxStepWithoutKill = 50;
+  const canPassLastSafe = !killRequired || ((player.kills || 0) > 0);
 
   const options = [];
   const seenValues = new Set();
@@ -82,7 +85,12 @@ function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 
     if (step === -1) {
       if (roll === 6) isValid = true;
     } else if (step < finishStep) {
-      if (step + roll <= finishStep) isValid = true;
+      const newStep = step + roll;
+      if (newStep <= finishStep) {
+        if (canPassLastSafe || newStep <= maxStepWithoutKill) {
+          isValid = true;
+        }
+      }
     }
 
     if (isValid && !seenValues.has(roll)) {
@@ -106,12 +114,13 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
 
   const { players, activeColor } = gameState;
   const isMyTurn = (activeColor === myColor);
+  const killRequired = !!gameState.customRules?.killRequiredToEnterHome;
 
   const handleTokenClick = (color, tokenIndex, tokCx, tokCy) => {
     if (!isMyTurn || color !== activeColor || gameState.canRoll) return;
 
     const player = players[color];
-    const options = getValidRollOptionsForToken(player, tokenIndex, gameState.dicePool, 57);
+    const options = getValidRollOptionsForToken(player, tokenIndex, gameState.dicePool, 56, killRequired);
 
     if (options.length === 0) return;
 
@@ -149,20 +158,22 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
 
         if (step === -1) {
           isYard = true;
-          const spot = YARD_SPOTS_4P[color][tIdx];
+          const spots = YARD_SPOTS_4P[color] || YARD_SPOTS_4P.red;
+          const spot = spots[tIdx] || spots[0];
           baseCx = spot.c * cs + cs / 2;
           baseCy = spot.r * cs + cs / 2;
           key = `yard-${color}-${tIdx}`;
-        } else if (step < 52) {
+        } else if (step < 51) {
           const startPos = color === 'red' ? 0 : color === 'green' ? 13 : color === 'yellow' ? 26 : 39;
           const absIndex = (startPos + step) % 52;
-          const cell = MAIN_TRACK_4P[absIndex];
+          const cell = MAIN_TRACK_4P[absIndex] || MAIN_TRACK_4P[0];
           baseCx = cell.c * cs + cs / 2;
           baseCy = cell.r * cs + cs / 2;
           key = `main-${absIndex}`;
         } else {
-          const homeStep = step - 52;
-          const cell = HOME_PATHS_4P[color][Math.min(homeStep, 5)];
+          const homeStep = step - 51;
+          const path = HOME_PATHS_4P[color] || HOME_PATHS_4P.red;
+          const cell = path[Math.min(homeStep, 5)] || path[5];
           baseCx = cell.c * cs + cs / 2;
           baseCy = cell.r * cs + cs / 2;
           key = `home-${color}-${homeStep}`;

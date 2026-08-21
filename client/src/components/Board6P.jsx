@@ -36,10 +36,13 @@ function getOccupantOffset(occupantIndex, totalOccupants) {
   return { ...offsets[occupantIndex % 4], r: 8.5 };
 }
 
-function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 77) {
+function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 76, killRequired = false) {
   if (!player || !player.tokens || !dicePool || dicePool.length === 0) return [];
   const step = player.tokens[tokenIndex];
   if (step === undefined) return [];
+
+  const maxStepWithoutKill = 70;
+  const canPassLastSafe = !killRequired || ((player.kills || 0) > 0);
 
   const options = [];
   const seenValues = new Set();
@@ -49,7 +52,12 @@ function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 
     if (step === -1) {
       if (roll === 6) isValid = true;
     } else if (step < finishStep) {
-      if (step + roll <= finishStep) isValid = true;
+      const newStep = step + roll;
+      if (newStep <= finishStep) {
+        if (canPassLastSafe || newStep <= maxStepWithoutKill) {
+          isValid = true;
+        }
+      }
     }
 
     if (isValid && !seenValues.has(roll)) {
@@ -73,6 +81,7 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
 
   const { players, activeColor } = gameState;
   const isMyTurn = (activeColor === myColor);
+  const killRequired = !!gameState.customRules?.killRequiredToEnterHome;
 
   const cx = 400;
   const cy = 400;
@@ -91,7 +100,8 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
   // Calculate Home Stretch path coords
   const getHomePathCoords = (color, stepIndex) => {
     const cIdx = PLAYER_COLORS.indexOf(color);
-    const sectorAngleRad = ((cIdx * 60) - 90) * (Math.PI / 180);
+    const validCIdx = cIdx >= 0 ? cIdx : 0;
+    const sectorAngleRad = ((validCIdx * 60) - 90) * (Math.PI / 180);
     const rStart = 250;
     const rEnd = 60;
     const radius = rStart - ((stepIndex / 6) * (rStart - rEnd));
@@ -104,7 +114,8 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
   // Yard display positions
   const getYardCoords = (color, tokenIndex) => {
     const cIdx = PLAYER_COLORS.indexOf(color);
-    const angleRad = ((cIdx * 60) - 90) * (Math.PI / 180);
+    const validCIdx = cIdx >= 0 ? cIdx : 0;
+    const angleRad = ((validCIdx * 60) - 90) * (Math.PI / 180);
     const baseRadius = 345;
     const baseX = cx + baseRadius * Math.cos(angleRad);
     const baseY = cy + baseRadius * Math.sin(angleRad);
@@ -123,7 +134,7 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
     if (!isMyTurn || color !== activeColor || gameState.canRoll) return;
 
     const player = players[color];
-    const options = getValidRollOptionsForToken(player, tokenIndex, gameState.dicePool, 77);
+    const options = getValidRollOptionsForToken(player, tokenIndex, gameState.dicePool, 76, killRequired);
 
     if (options.length === 0) return;
 
@@ -159,14 +170,14 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
           isYard = true;
           basePos = getYardCoords(color, tIdx);
           key = `yard-${color}-${tIdx}`;
-        } else if (step < 72) {
+        } else if (step < 71) {
           const cIdx = PLAYER_COLORS.indexOf(color);
-          const startStep = cIdx * 12;
+          const startStep = (cIdx >= 0 ? cIdx : 0) * 12;
           const absStep = (startStep + step) % 72;
           basePos = getTrackCoords(absStep);
           key = `main-${absStep}`;
         } else {
-          const homeStep = step - 72;
+          const homeStep = step - 71;
           basePos = getHomePathCoords(color, Math.min(homeStep, 5));
           key = `home-${color}-${homeStep}`;
         }

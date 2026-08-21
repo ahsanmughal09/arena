@@ -23,8 +23,9 @@ class LudoEngine {
 
     this.colors = mode === '4P' ? PLAYER_COLORS_4P : PLAYER_COLORS_6P;
     this.trackLength = mode === '4P' ? 52 : 72;
+    this.outerTrackLength = mode === '4P' ? 51 : 71;
     this.homeLength = 6;
-    this.finishStep = mode === '4P' ? 57 : 77; // -1: yard, 0..trackLength-1: main, trackLength..finishStep-1: home stretch, finishStep: finished
+    this.finishStep = mode === '4P' ? 56 : 76; // -1: yard, 0..outerTrackLength-1: main, outerTrackLength..finishStep: home stretch (56/76 is finished)
     
     this.startPositions = mode === '4P' ? {
       red: 0,
@@ -256,8 +257,8 @@ class LudoEngine {
     if (!player || !roll) return [];
 
     const valid = [];
-    // Max step index a token can reach without a kill when killRequiredToEnterHome is active
-    const maxStepWithoutKill = this.mode === '4P' ? 47 : 68;
+    // Max step index a token can reach without a kill when killRequiredToEnterHome is active (50 in 4P, 70 in 6P)
+    const maxStepWithoutKill = this.mode === '4P' ? 50 : 70;
     const canPassLastSafe = !this.customRules.killRequiredToEnterHome || ((player.kills || 0) > 0);
 
     player.tokens.forEach((step, tokenIndex) => {
@@ -283,8 +284,10 @@ class LudoEngine {
   // Convert token's relative step (-1, 0..finishStep) to absolute board step (0..trackLength-1 or home identifier)
   getGlobalPosition(color, step) {
     if (step === -1) return { type: 'YARD', color, id: `yard-${color}` };
-    if (step >= this.trackLength) {
-      return { type: 'HOME_PATH', color, step: step - this.trackLength, id: `home-${color}-${step - this.trackLength}` };
+    const outerLen = this.outerTrackLength || (this.mode === '4P' ? 51 : 71);
+    if (step >= outerLen) {
+      const homeIdx = step - outerLen;
+      return { type: 'HOME_PATH', color, step: homeIdx, id: `home-${color}-${homeIdx}` };
     }
     
     const startPos = this.startPositions[color];
