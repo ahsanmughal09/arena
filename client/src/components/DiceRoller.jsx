@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { sounds } from '../utils/audio';
 
 export default function DiceRoller({ 
@@ -13,9 +13,28 @@ export default function DiceRoller({
   validMoves 
 }) {
   const [rolling, setRolling] = useState(false);
+  const [showingSixDelay, setShowingSixDelay] = useState(false);
+
+  useEffect(() => {
+    let timer;
+    let anim;
+    if (canRoll && currentDice === 6 && !rolling) {
+      anim = requestAnimationFrame(() => {
+        setShowingSixDelay(true);
+      });
+      timer = setTimeout(() => {
+        setShowingSixDelay(false);
+      }, 1000);
+    }
+    return () => {
+      if (anim) cancelAnimationFrame(anim);
+      if (timer) clearTimeout(timer);
+      setShowingSixDelay(false);
+    };
+  }, [currentDice, canRoll, dicePool.length, rolling]);
 
   const handleRoll = () => {
-    if (!isMyTurn || !canRoll || rolling) return;
+    if (!isMyTurn || !canRoll || rolling || showingSixDelay) return;
     setRolling(true);
     sounds.playDiceRoll();
 
@@ -37,13 +56,17 @@ export default function DiceRoller({
     }
   };
 
-  const displayDiceVal = currentDice || (dicePool.length > 0 ? dicePool[selectedRollIndex] : null);
+  const displayDiceVal = showingSixDelay 
+    ? 6 
+    : (canRoll ? null : (dicePool[selectedRollIndex] || currentDice || null));
+
+  const showBalance = dicePool && dicePool.length > 1;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
       
       {/* Dice Pool / Balance Badges */}
-      {dicePool && dicePool.length > 0 && (
+      {showBalance && (
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#1E293B', padding: '6px 14px', borderRadius: '20px', border: '1px solid #334155' }}>
           <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             Balance:
@@ -88,10 +111,10 @@ export default function DiceRoller({
           width: '76px',
           height: '76px',
           borderRadius: '16px',
-          background: (isMyTurn && canRoll) ? 'linear-gradient(145deg, #FFFFFF, #E2E8F0)' : '#334155',
-          boxShadow: (isMyTurn && canRoll) ? '0 10px 25px rgba(255, 255, 255, 0.25), inset 0 2px 4px #FFF' : 'none',
+          background: (isMyTurn && canRoll && !showingSixDelay) ? 'linear-gradient(145deg, #FFFFFF, #E2E8F0)' : '#334155',
+          boxShadow: (isMyTurn && canRoll && !showingSixDelay) ? '0 10px 25px rgba(255, 255, 255, 0.25), inset 0 2px 4px #FFF' : 'none',
           border: '2px solid rgba(255,255,255,0.4)',
-          cursor: (isMyTurn && canRoll) ? 'pointer' : 'default',
+          cursor: (isMyTurn && canRoll && !showingSixDelay) ? 'pointer' : 'default',
           transform: rolling ? 'rotate(360deg) scale(1.1)' : 'scale(1)',
           transition: 'all 0.4s ease',
           display: 'flex',
@@ -102,7 +125,7 @@ export default function DiceRoller({
       >
         <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
           {displayDiceVal && getDiceDots(displayDiceVal).map((dot, idx) => (
-            <circle key={`dot-${idx}`} cx={dot.x} cy={dot.y} r="8" fill={(isMyTurn && canRoll) ? '#0F172A' : '#F8FAFC'} />
+            <circle key={`dot-${idx}`} cx={dot.x} cy={dot.y} r="8" fill={(isMyTurn && canRoll && !showingSixDelay) ? '#0F172A' : '#F8FAFC'} />
           ))}
           {!displayDiceVal && !rolling && (
             <text x="50" y="58" fill={(isMyTurn && canRoll) ? '#0F172A' : '#94A3B8'} fontSize="32" fontWeight="bold" textAnchor="middle">

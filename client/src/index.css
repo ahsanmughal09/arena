@@ -127,24 +127,22 @@ body {
   animation: turnPulse 1.8s infinite;
 }
 
-/* Token Glows */
-.token-red { fill: var(--color-red); filter: drop-shadow(0 0 6px var(--glow-red)); }
-.token-green { fill: var(--color-green); filter: drop-shadow(0 0 6px var(--glow-green)); }
-.token-yellow { fill: var(--color-yellow); filter: drop-shadow(0 0 6px var(--glow-yellow)); }
-.token-blue { fill: var(--color-blue); filter: drop-shadow(0 0 6px var(--glow-blue)); }
-.token-orange { fill: var(--color-orange); filter: drop-shadow(0 0 6px var(--glow-orange)); }
-.token-purple { fill: var(--color-purple); filter: drop-shadow(0 0 6px var(--glow-purple)); }
-
 /* Moveable Token Highlight animation */
-@keyframes moveablePulse {
-  0% { transform: scale(1); filter: drop-shadow(0 0 8px #FFF); }
-  50% { transform: scale(1.15); filter: drop-shadow(0 0 16px #FFF); }
-  100% { transform: scale(1); filter: drop-shadow(0 0 8px #FFF); }
+@keyframes dashRotate {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 12; }
 }
 
-.token-moveable {
+.token-g-moveable {
   cursor: pointer;
-  animation: moveablePulse 1.2s infinite;
+}
+
+.token-g-moveable:hover circle.token-body {
+  filter: brightness(1.2) drop-shadow(0 0 4px #FFFFFF);
+}
+
+.token-moveable-ring {
+  animation: dashRotate 1.5s linear infinite;
 }
 
 /* Custom Scrollbar */

@@ -11,6 +11,31 @@ const COLOR_HEX = {
   purple: '#A55EEA'
 };
 
+function getOccupantOffset(occupantIndex, totalOccupants) {
+  if (totalOccupants <= 1) {
+    return { dx: 0, dy: 0, r: 13 };
+  }
+  if (totalOccupants === 2) {
+    const dx = occupantIndex === 0 ? -10 : 10;
+    return { dx, dy: 0, r: 10 };
+  }
+  if (totalOccupants === 3) {
+    const offsets = [
+      { dx: 0, dy: -9 },
+      { dx: -10, dy: 7 },
+      { dx: 10, dy: 7 }
+    ];
+    return { ...offsets[occupantIndex % 3], r: 9 };
+  }
+  const offsets = [
+    { dx: -10, dy: -10 },
+    { dx: 10, dy: -10 },
+    { dx: -10, dy: 10 },
+    { dx: 10, dy: 10 }
+  ];
+  return { ...offsets[occupantIndex % 4], r: 8.5 };
+}
+
 export default function Board6P({ gameState, myColor, onMoveToken }) {
   if (!gameState) return null;
 
@@ -21,10 +46,8 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
   const cy = 400;
 
   // Calculate Cartesian position for 72 main track steps
-  // 6 Sectors, 60 deg each (0..5). Each sector has 12 track nodes.
   const getTrackCoords = (stepIndex) => {
     const totalSteps = 72;
-    // Step angle around full circle (starting from top -90 deg)
     const angleRad = ((stepIndex / totalSteps) * 360 - 90) * (Math.PI / 180);
     const radius = 290;
     return {
@@ -33,11 +56,10 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
     };
   };
 
-  // Calculate Home Stretch path coords (steps 0..5 leading into center)
+  // Calculate Home Stretch path coords
   const getHomePathCoords = (color, stepIndex) => {
     const cIdx = PLAYER_COLORS.indexOf(color);
     const sectorAngleRad = ((cIdx * 60) - 90) * (Math.PI / 180);
-    // Home stretch moves from radius 240 down to radius 60
     const rStart = 250;
     const rEnd = 60;
     const radius = rStart - ((stepIndex / 6) * (rStart - rEnd));
@@ -47,7 +69,7 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
     };
   };
 
-  // Yard display positions for 4 tokens per color
+  // Yard display positions
   const getYardCoords = (color, tokenIndex) => {
     const cIdx = PLAYER_COLORS.indexOf(color);
     const angleRad = ((cIdx * 60) - 90) * (Math.PI / 180);
@@ -65,24 +87,6 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
     return { x: baseX + off.x, y: baseY + off.y };
   };
 
-  const getTokenCoords = (color, step, tokenIndex) => {
-    if (step === -1) {
-      return getYardCoords(color, tokenIndex);
-    }
-    if (step < 72) {
-      const cIdx = PLAYER_COLORS.indexOf(color);
-      const startStep = cIdx * 12;
-      const absStep = (startStep + step) % 72;
-      const pos = getTrackCoords(absStep);
-      // Small jitter for stacked tokens
-      const stackOffset = (tokenIndex % 4) * 4 - 6;
-      return { x: pos.x + stackOffset, y: pos.y + stackOffset };
-    }
-    // Home stretch (72..77)
-    const homeStep = step - 72;
-    return getHomePathCoords(color, Math.min(homeStep, 5));
-  };
-
   const handleTokenClick = (color, tokenIndex) => {
     if (!isMyTurn || color !== activeColor) return;
     if (validMoves.includes(tokenIndex)) {
@@ -90,6 +94,55 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
       onMoveToken(tokenIndex);
     }
   };
+
+  // Group all tokens by their cell location for sub-grid multi-token positioning
+  const cellOccupants = {};
+  const allRenderTokens = [];
+
+  if (players) {
+    Object.keys(players).forEach(color => {
+      const player = players[color];
+      if (!player) return;
+
+      player.tokens.forEach((step, tIdx) => {
+        let key;
+        let basePos = { x: 400, y: 400 };
+        let isYard = false;
+
+        if (step === -1) {
+          isYard = true;
+          basePos = getYardCoords(color, tIdx);
+          key = `yard-${color}-${tIdx}`;
+        } else if (step < 72) {
+          const cIdx = PLAYER_COLORS.indexOf(color);
+          const startStep = cIdx * 12;
+          const absStep = (startStep + step) % 72;
+          basePos = getTrackCoords(absStep);
+          key = `main-${absStep}`;
+        } else {
+          const homeStep = step - 72;
+          basePos = getHomePathCoords(color, Math.min(homeStep, 5));
+          key = `home-${color}-${homeStep}`;
+        }
+
+        if (!cellOccupants[key]) cellOccupants[key] = [];
+        const occIdx = cellOccupants[key].length;
+        cellOccupants[key].push(1);
+
+        allRenderTokens.push({
+          key: `token-${color}-${tIdx}`,
+          color,
+          tIdx,
+          step,
+          baseCx: basePos.x,
+          baseCy: basePos.y,
+          cellKey: key,
+          occIdx,
+          isYard
+        });
+      });
+    });
+  }
 
   return (
     <div style={{ position: 'relative', width: '100%', maxWidth: '720px', margin: '0 auto' }}>
@@ -187,45 +240,59 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
         <text x={cx} y={cy + 6} fill="#F8FAFC" fontSize="20" fontWeight="bold" textAnchor="middle">LUDO 6P</text>
 
         {/* Tokens Rendering */}
-        {players && Object.keys(players).map(color => {
-          const player = players[color];
-          if (!player) return null;
+        {allRenderTokens.map(tok => {
+          const totalOccupants = cellOccupants[tok.cellKey]?.length || 1;
+          const offsetInfo = tok.isYard 
+            ? { dx: 0, dy: 0, r: 13 } 
+            : getOccupantOffset(tok.occIdx, totalOccupants);
 
-          return player.tokens.map((step, tIdx) => {
-            const coords = getTokenCoords(color, step, tIdx);
-            const isMoveable = isMyTurn && color === activeColor && validMoves.includes(tIdx);
+          const tokCx = tok.baseCx + offsetInfo.dx;
+          const tokCy = tok.baseCy + offsetInfo.dy;
+          const r = offsetInfo.r;
 
-            return (
-              <g 
-                key={`token-${color}-${tIdx}`} 
-                onClick={() => handleTokenClick(color, tIdx)}
-                style={{ cursor: isMoveable ? 'pointer' : 'default', transition: 'all 0.3s ease' }}
-              >
-                {isMoveable && (
-                  <>
-                    <circle cx={coords.x} cy={coords.y} r="18" fill="none" stroke="#FFF" strokeWidth="3" className="active-turn-ring" />
-                    <g style={{ animation: 'floatArrow 0.8s infinite alternate' }}>
-                      <polygon 
-                        points={`${coords.x},${coords.y - 22} ${coords.x - 6},${coords.y - 34} ${coords.x + 6},${coords.y - 34}`} 
-                        fill="#FFF" 
-                        stroke="#6366F1" 
-                        strokeWidth="1.5" 
-                      />
-                    </g>
-                  </>
-                )}
+          const isMoveable = isMyTurn && tok.color === activeColor && validMoves.includes(tok.tIdx);
+          const colorHex = COLOR_HEX[tok.color] || '#FFF';
+
+          return (
+            <g 
+              key={tok.key} 
+              onClick={() => handleTokenClick(tok.color, tok.tIdx)}
+              className={isMoveable ? 'token-g-moveable' : ''}
+            >
+              {/* Outer Pulsing Ring for Moveable Tokens */}
+              {isMoveable && (
                 <circle 
-                  cx={coords.x} 
-                  cy={coords.y} 
-                  r="13" 
-                  className={`token-${color} ${isMoveable ? 'token-moveable' : ''}`} 
-                  stroke="#FFF" 
-                  strokeWidth="2" 
+                  cx={tokCx} 
+                  cy={tokCy} 
+                  r={r + 3.5} 
+                  fill="none" 
+                  stroke="#FFFFFF" 
+                  strokeWidth="2.5" 
+                  strokeDasharray="4 2" 
+                  className="token-moveable-ring" 
                 />
-                <circle cx={coords.x} cy={coords.y} r="5" fill="#FFF" opacity="0.8" />
-              </g>
-            );
-          });
+              )}
+              {/* Main Token Circle */}
+              <circle 
+                cx={tokCx} 
+                cy={tokCy} 
+                r={r} 
+                fill={colorHex} 
+                stroke="#FFFFFF" 
+                strokeWidth="2" 
+                className="token-body"
+                style={{ transition: 'all 0.2s ease' }}
+              />
+              {/* Glossy Center Specular Dot */}
+              <circle 
+                cx={tokCx - r * 0.25} 
+                cy={tokCy - r * 0.25} 
+                r={r * 0.35} 
+                fill="#FFFFFF" 
+                opacity="0.5" 
+              />
+            </g>
+          );
         })}
 
       </svg>

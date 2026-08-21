@@ -2,6 +2,7 @@
  * Core Ludo Engine supporting 4-Player Square & 6-Player Hexagonal modes,
  * custom diagonal teaming, server-authoritative move validation, and turn cycling.
  * Features Roll Balance (Dice Stacking) mechanic when rolling 6s.
+ * Capturing an enemy token awards an extra turn (extra roll), not an extra 6.
  */
 
 const PLAYER_COLORS_4P = ['red', 'green', 'yellow', 'blue'];
@@ -45,6 +46,7 @@ class LudoEngine {
     this.dicePool = [];
     this.selectedRollIndex = 0;
     this.canRoll = true;
+    this.hasExtraTurn = false;
     this.currentDice = null;
     this.consecutiveSixes = 0;
     this.gameStarted = false;
@@ -115,6 +117,7 @@ class LudoEngine {
     this.dicePool = [];
     this.selectedRollIndex = 0;
     this.canRoll = true;
+    this.hasExtraTurn = false;
     this.currentDice = null;
     this.consecutiveSixes = 0;
     this.validMoves = [];
@@ -266,9 +269,9 @@ class LudoEngine {
     // Remove executed roll from dicePool
     this.dicePool.splice(useIndex, 1);
 
-    // If captured an enemy token, add bonus 6 to the balance pool!
+    // If captured an enemy token, award an EXTRA TURN (bonus roll opportunity)!
     if (captured !== null) {
-      this.dicePool.push(6);
+      this.hasExtraTurn = true;
     }
 
     this.lastAction = {
@@ -293,16 +296,34 @@ class LudoEngine {
     if (this.dicePool.length > 0) {
       const hasMoves = this.autoSelectValidRoll();
       if (!hasMoves) {
-        // No remaining valid moves for any dice in pool -> clear pool & pass turn
+        // No remaining valid moves for any dice in pool -> clear pool
         this.dicePool = [];
-        this.nextTurn();
+        if (this.hasExtraTurn) {
+          this.grantExtraTurn();
+        } else {
+          this.nextTurn();
+        }
       }
     } else {
-      // Pool empty -> pass turn
-      this.nextTurn();
+      // Pool empty -> check extra turn from capture or pass turn
+      if (this.hasExtraTurn) {
+        this.grantExtraTurn();
+      } else {
+        this.nextTurn();
+      }
     }
 
     return { success: true, gameOver: false, action: this.lastAction };
+  }
+
+  grantExtraTurn() {
+    this.hasExtraTurn = false;
+    this.dicePool = [];
+    this.selectedRollIndex = 0;
+    this.canRoll = true;
+    this.currentDice = null;
+    this.consecutiveSixes = 0;
+    this.validMoves = [];
   }
 
   checkCapture(movingColor, targetMainStep) {
@@ -347,6 +368,7 @@ class LudoEngine {
     this.dicePool = [];
     this.selectedRollIndex = 0;
     this.canRoll = true;
+    this.hasExtraTurn = false;
     this.currentDice = null;
     this.validMoves = [];
     let nextIdx = (this.activePlayerIndex + 1) % this.colors.length;
@@ -378,6 +400,7 @@ class LudoEngine {
       dicePool: this.dicePool,
       selectedRollIndex: this.selectedRollIndex,
       canRoll: this.canRoll,
+      hasExtraTurn: this.hasExtraTurn,
       validMoves: this.validMoves,
       gameStarted: this.gameStarted,
       gameOver: this.gameOver,

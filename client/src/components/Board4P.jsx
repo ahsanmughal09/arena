@@ -37,38 +37,43 @@ const YARD_SPOTS_4P = {
 const SAFE_INDICES_4P = [0, 8, 13, 21, 26, 34, 39, 47];
 const STAR_SPOTS_4P = SAFE_INDICES_4P.map(idx => MAIN_TRACK_4P[idx]);
 
+const COLOR_HEX_4P = {
+  red: '#FF4757',
+  green: '#2ED573',
+  yellow: '#FFA502',
+  blue: '#1E90FF'
+};
+
+function getOccupantOffset(occupantIndex, totalOccupants) {
+  if (totalOccupants <= 1) {
+    return { dx: 0, dy: 0, r: 13 };
+  }
+  if (totalOccupants === 2) {
+    const dx = occupantIndex === 0 ? -10 : 10;
+    return { dx, dy: 0, r: 10 };
+  }
+  if (totalOccupants === 3) {
+    const offsets = [
+      { dx: 0, dy: -9 },
+      { dx: -10, dy: 7 },
+      { dx: 10, dy: 7 }
+    ];
+    return { ...offsets[occupantIndex % 3], r: 9 };
+  }
+  const offsets = [
+    { dx: -10, dy: -10 },
+    { dx: 10, dy: -10 },
+    { dx: -10, dy: 10 },
+    { dx: 10, dy: 10 }
+  ];
+  return { ...offsets[occupantIndex % 4], r: 8.5 };
+}
+
 export default function Board4P({ gameState, myColor, onMoveToken }) {
   if (!gameState) return null;
 
   const { players, validMoves, activeColor } = gameState;
   const isMyTurn = (activeColor === myColor);
-
-  const getPixelCoords = (color, step, tokenIndex) => {
-    const cs = 40;
-    if (step === -1) {
-      const spot = YARD_SPOTS_4P[color][tokenIndex];
-      return { x: spot.c * cs + cs / 2, y: spot.r * cs + cs / 2 };
-    }
-    
-    let cell;
-    if (step < 52) {
-      const startPos = gameState.safeSpots ? (color === 'red' ? 0 : color === 'green' ? 13 : color === 'yellow' ? 26 : 39) : 0;
-      const absIndex = (startPos + step) % 52;
-      cell = MAIN_TRACK_4P[absIndex];
-    } else {
-      const homeStep = step - 52;
-      cell = HOME_PATHS_4P[color][Math.min(homeStep, 5)];
-    }
-
-    if (!cell) return { x: 300, y: 300 };
-
-    // Small offset for multiple stacked tokens
-    const stackOffset = (tokenIndex % 4) * 4 - 6;
-    return {
-      x: cell.c * cs + cs / 2 + stackOffset,
-      y: cell.r * cs + cs / 2 + stackOffset
-    };
-  };
 
   const handleTokenClick = (color, tokenIndex) => {
     if (!isMyTurn || color !== activeColor) return;
@@ -77,6 +82,62 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
       onMoveToken(tokenIndex);
     }
   };
+
+  // Group all tokens by their cell location for sub-grid multi-token positioning
+  const cellOccupants = {};
+  const allRenderTokens = [];
+
+  if (players) {
+    const cs = 40;
+    Object.keys(players).forEach(color => {
+      const player = players[color];
+      if (!player) return;
+
+      player.tokens.forEach((step, tIdx) => {
+        let key;
+        let baseCx = 300;
+        let baseCy = 300;
+        let isYard = false;
+
+        if (step === -1) {
+          isYard = true;
+          const spot = YARD_SPOTS_4P[color][tIdx];
+          baseCx = spot.c * cs + cs / 2;
+          baseCy = spot.r * cs + cs / 2;
+          key = `yard-${color}-${tIdx}`;
+        } else if (step < 52) {
+          const startPos = color === 'red' ? 0 : color === 'green' ? 13 : color === 'yellow' ? 26 : 39;
+          const absIndex = (startPos + step) % 52;
+          const cell = MAIN_TRACK_4P[absIndex];
+          baseCx = cell.c * cs + cs / 2;
+          baseCy = cell.r * cs + cs / 2;
+          key = `main-${absIndex}`;
+        } else {
+          const homeStep = step - 52;
+          const cell = HOME_PATHS_4P[color][Math.min(homeStep, 5)];
+          baseCx = cell.c * cs + cs / 2;
+          baseCy = cell.r * cs + cs / 2;
+          key = `home-${color}-${homeStep}`;
+        }
+
+        if (!cellOccupants[key]) cellOccupants[key] = [];
+        const occIdx = cellOccupants[key].length;
+        cellOccupants[key].push(1);
+
+        allRenderTokens.push({
+          key: `token-${color}-${tIdx}`,
+          color,
+          tIdx,
+          step,
+          baseCx,
+          baseCy,
+          cellKey: key,
+          occIdx,
+          isYard
+        });
+      });
+    });
+  }
 
   return (
     <div style={{ position: 'relative', width: '100%', maxWidth: '600px', margin: '0 auto' }}>
@@ -158,47 +219,59 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
         <text x="300" y="306" fill="#F8FAFC" fontSize="16" fontWeight="bold" textAnchor="middle">LUDO</text>
 
         {/* Tokens Rendering */}
-        {players && Object.keys(players).map(color => {
-          const player = players[color];
-          if (!player) return null;
+        {allRenderTokens.map(tok => {
+          const totalOccupants = cellOccupants[tok.cellKey]?.length || 1;
+          const offsetInfo = tok.isYard 
+            ? { dx: 0, dy: 0, r: 14 } 
+            : getOccupantOffset(tok.occIdx, totalOccupants);
 
-          return player.tokens.map((step, tIdx) => {
-            const coords = getPixelCoords(color, step, tIdx);
-            const isMoveable = isMyTurn && color === activeColor && validMoves.includes(tIdx);
+          const cx = tok.baseCx + offsetInfo.dx;
+          const cy = tok.baseCy + offsetInfo.dy;
+          const r = offsetInfo.r;
 
-            return (
-              <g 
-                key={`token-${color}-${tIdx}`} 
-                onClick={() => handleTokenClick(color, tIdx)}
-                style={{ cursor: isMoveable ? 'pointer' : 'default', transition: 'all 0.3s ease' }}
-              >
-                {/* Outer Glow Ring & Floating Turn Arrow for Moveable Token */}
-                {isMoveable && (
-                  <>
-                    <circle cx={coords.x} cy={coords.y} r="18" fill="none" stroke="#FFF" strokeWidth="3" className="active-turn-ring" />
-                    <g style={{ animation: 'floatArrow 0.8s infinite alternate' }}>
-                      <polygon 
-                        points={`${coords.x},${coords.y - 24} ${coords.x - 7},${coords.y - 36} ${coords.x + 7},${coords.y - 36}`} 
-                        fill="#FFF" 
-                        stroke="#6366F1" 
-                        strokeWidth="1.5" 
-                      />
-                    </g>
-                  </>
-                )}
-                {/* Token Circle */}
+          const isMoveable = isMyTurn && tok.color === activeColor && validMoves.includes(tok.tIdx);
+          const colorHex = COLOR_HEX_4P[tok.color] || '#FFF';
+
+          return (
+            <g 
+              key={tok.key} 
+              onClick={() => handleTokenClick(tok.color, tok.tIdx)}
+              className={isMoveable ? 'token-g-moveable' : ''}
+            >
+              {/* Outer Pulsing Ring for Moveable Tokens */}
+              {isMoveable && (
                 <circle 
-                  cx={coords.x} 
-                  cy={coords.y} 
-                  r="14" 
-                  className={`token-${color} ${isMoveable ? 'token-moveable' : ''}`} 
-                  stroke="#FFF" 
-                  strokeWidth="2" 
+                  cx={cx} 
+                  cy={cy} 
+                  r={r + 3.5} 
+                  fill="none" 
+                  stroke="#FFFFFF" 
+                  strokeWidth="2.5" 
+                  strokeDasharray="4 2" 
+                  className="token-moveable-ring" 
                 />
-                <circle cx={coords.x} cy={coords.y} r="6" fill="#FFF" opacity="0.8" />
-              </g>
-            );
-          });
+              )}
+              {/* Main Token Circle */}
+              <circle 
+                cx={cx} 
+                cy={cy} 
+                r={r} 
+                fill={colorHex} 
+                stroke="#FFFFFF" 
+                strokeWidth="2" 
+                className="token-body"
+                style={{ transition: 'all 0.2s ease' }}
+              />
+              {/* Glossy Center Specular Dot */}
+              <circle 
+                cx={cx - r * 0.25} 
+                cy={cy - r * 0.25} 
+                r={r * 0.35} 
+                fill="#FFFFFF" 
+                opacity="0.5" 
+              />
+            </g>
+          );
         })}
 
       </svg>
