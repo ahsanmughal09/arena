@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { sounds } from '../utils/audio';
 
 const PLAYER_COLORS = ['red', 'green', 'yellow', 'blue', 'orange', 'purple'];
-const COLOR_HEX = {
+const COLOR_HEX_6P = {
   red: '#FF4757',
   green: '#2ED573',
   yellow: '#FFA502',
   blue: '#1E90FF',
-  orange: '#FF6B81',
-  purple: '#A55EEA'
+  orange: '#FF7F50',
+  purple: '#A855F7'
 };
 
 function getOccupantOffset(occupantIndex, totalOccupants) {
@@ -71,11 +71,75 @@ function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 
 
 export default function Board6P({ gameState, myColor, onMoveToken }) {
   const [activePopup, setActivePopup] = useState(null);
+  const [displaySteps, setDisplaySteps] = useState({});
 
   useEffect(() => {
     const anim = requestAnimationFrame(() => setActivePopup(null));
     return () => cancelAnimationFrame(anim);
   }, [gameState?.activeColor, gameState?.dicePool?.length]);
+
+  // Step-by-Step animated movement & capture return loop for 6P
+  useEffect(() => {
+    const action = gameState?.lastAction;
+    if (!action || action.type !== 'MOVE') return;
+
+    const { color, tokenIndex, oldStep, newStep, captured } = action;
+    const key = `${color}-${tokenIndex}`;
+
+    let current = oldStep === -1 ? 0 : oldStep;
+    const target = newStep;
+
+    if (current === target) return;
+
+    const timer = setTimeout(() => {
+      setDisplaySteps(prev => ({ ...prev, [key]: current }));
+    }, 0);
+
+    const stepInterval = setInterval(() => {
+      current++;
+      sounds.playTokenStep();
+      setDisplaySteps(prev => ({ ...prev, [key]: current }));
+
+      if (current >= target) {
+        clearInterval(stepInterval);
+
+        if (captured) {
+          sounds.playCapture();
+          const capKey = `${captured.color}-${captured.tokenIndex}`;
+          let capStep = (captured.oldStep !== undefined && captured.oldStep >= 0) ? captured.oldStep : target;
+          
+          setDisplaySteps(prev => ({ ...prev, [capKey]: capStep }));
+
+          const capInterval = setInterval(() => {
+            capStep = capStep - 1;
+            setDisplaySteps(prev => ({ ...prev, [capKey]: capStep }));
+            if (capStep <= -1) {
+              clearInterval(capInterval);
+              setDisplaySteps(prev => {
+                const next = { ...prev };
+                delete next[capKey];
+                delete next[key];
+                return next;
+              });
+            }
+          }, 40);
+        } else {
+          setTimeout(() => {
+            setDisplaySteps(prev => {
+              const next = { ...prev };
+              delete next[key];
+              return next;
+            });
+          }, 150);
+        }
+      }
+    }, 120);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(stepInterval);
+    };
+  }, [gameState?.lastAction]);
 
   if (!gameState) return null;
 
@@ -162,22 +226,26 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
       if (!player) return;
 
       player.tokens.forEach((step, tIdx) => {
+        const stepToRender = displaySteps[`${color}-${tIdx}`] !== undefined 
+          ? displaySteps[`${color}-${tIdx}`] 
+          : step;
+
         let key;
         let basePos = { x: 400, y: 400 };
         let isYard = false;
 
-        if (step === -1) {
+        if (stepToRender === -1) {
           isYard = true;
           basePos = getYardCoords(color, tIdx);
           key = `yard-${color}-${tIdx}`;
-        } else if (step < 71) {
+        } else if (stepToRender < 71) {
           const cIdx = PLAYER_COLORS.indexOf(color);
           const startStep = (cIdx >= 0 ? cIdx : 0) * 12;
-          const absStep = (startStep + step) % 72;
+          const absStep = (startStep + stepToRender) % 72;
           basePos = getTrackCoords(absStep);
           key = `main-${absStep}`;
         } else {
-          const homeStep = step - 71;
+          const homeStep = stepToRender - 71;
           basePos = getHomePathCoords(color, Math.min(homeStep, 5));
           key = `home-${color}-${homeStep}`;
         }
@@ -190,7 +258,7 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
           key: `token-${color}-${tIdx}`,
           color,
           tIdx,
-          step,
+          step: stepToRender,
           baseCx: basePos.x,
           baseCy: basePos.y,
           cellKey: key,
@@ -201,109 +269,79 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
     });
   }
 
+  // Generate 6 hex sectors for visual layout
+  const sectors = PLAYER_COLORS.map((col, idx) => {
+    const angleRad = ((idx * 60) - 90) * (Math.PI / 180);
+    const radius = 350;
+    return {
+      color: col,
+      hex: COLOR_HEX_6P[col],
+      x: cx + radius * Math.cos(angleRad),
+      y: cy + radius * Math.sin(angleRad)
+    };
+  });
+
   return (
     <div 
       onClick={() => setActivePopup(null)}
-      style={{ position: 'relative', width: '100%', maxWidth: 'min(620px, calc(100vh - 100px))', margin: '0 auto' }}
+      style={{ position: 'relative', width: '100%', maxWidth: 'min(700px, calc(100vh - 100px))', margin: '0 auto' }}
     >
-      <svg viewBox="0 0 800 800" style={{ width: '100%', height: 'auto', borderRadius: '24px', background: '#0F172A', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }}>
+      <svg viewBox="0 0 800 800" style={{ width: '100%', height: 'auto', borderRadius: '20px', background: '#0F172A', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}>
         
-        <defs>
-          <filter id="glowHex" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="6" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-          </filter>
-        </defs>
-
-        {/* Outer Hexagonal Star Background Structure */}
+        {/* Outer Hexagon Background */}
         <polygon 
           points={PLAYER_COLORS.map((_, i) => {
             const rad = ((i * 60) - 90) * (Math.PI / 180);
             return `${cx + 380 * Math.cos(rad)},${cy + 380 * Math.sin(rad)}`;
           }).join(' ')} 
-          fill="#161E2E" 
-          stroke="rgba(255,255,255,0.1)" 
-          strokeWidth="2" 
+          fill="#1E293B" 
+          stroke="#334155" 
+          strokeWidth="4" 
         />
 
-        {/* 6 Yard Base Circles */}
-        {PLAYER_COLORS.map((color, i) => {
-          const rad = ((i * 60) - 90) * (Math.PI / 180);
-          const bx = cx + 345 * Math.cos(rad);
-          const by = cy + 345 * Math.sin(rad);
-          return (
-            <g key={`yard-base-${color}`}>
-              <circle cx={bx} cy={by} r="34" fill={COLOR_HEX[color]} opacity="0.85" />
-              <circle cx={bx} cy={by} r="26" fill="#0F172A" stroke="#FFF" strokeWidth="2" />
-            </g>
-          );
-        })}
-
-        {/* 6 Home Stretch Corridors */}
-        {PLAYER_COLORS.map(color => (
-          [0, 1, 2, 3, 4].map(hStep => {
-            const pos = getHomePathCoords(color, hStep);
-            return (
-              <circle 
-                key={`home-path-${color}-${hStep}`} 
-                cx={pos.x} 
-                cy={pos.y} 
-                r="13" 
-                fill={COLOR_HEX[color]} 
-                opacity="0.75" 
-                stroke="#0F172A" 
-                strokeWidth="1.5" 
-              />
-            );
-          })
+        {/* 6 Color Sector Bases */}
+        {sectors.map((sec, idx) => (
+          <circle key={`sec-${idx}`} cx={sec.x} cy={sec.y} r="38" fill={sec.hex} opacity="0.8" stroke="#FFFFFF" strokeWidth="2" />
         ))}
 
-        {/* 72 Main Loop Track Nodes */}
-        {Array.from({ length: 72 }).map((_, stepIdx) => {
-          const pos = getTrackCoords(stepIdx);
-          const sectorColorIdx = Math.floor(stepIdx / 12);
-          const isStartNode = (stepIdx % 12 === 0);
-          const isStarNode = (stepIdx % 12 === 8);
-          const colorName = PLAYER_COLORS[sectorColorIdx];
-
-          let fill = '#1E293B';
-          if (isStartNode) fill = COLOR_HEX[colorName];
+        {/* 72 Track Spots */}
+        {Array.from({ length: 72 }).map((_, idx) => {
+          const coords = getTrackCoords(idx);
+          const isStar = (idx % 12 === 0) || (idx % 12 === 8);
+          const isStart = (idx % 12 === 0);
+          const colorIdx = Math.floor(idx / 12);
+          const colorName = PLAYER_COLORS[colorIdx];
+          const fillColor = isStart ? COLOR_HEX_6P[colorName] : (isStar ? '#334155' : '#0F172A');
 
           return (
-            <g key={`track-node-${stepIdx}`}>
-              <circle 
-                cx={pos.x} 
-                cy={pos.y} 
-                r={isStartNode || isStarNode ? 14 : 12} 
-                fill={fill} 
-                stroke="#334155" 
-                strokeWidth="1.5" 
-              />
-              {(isStartNode || isStarNode) && (
-                <text x={pos.x} y={pos.y + 5} fill="#FFF" fontSize="14" textAnchor="middle">★</text>
+            <g key={`spot-${idx}`}>
+              <circle cx={coords.x} cy={coords.y} r="15" fill={fillColor} opacity={isStart ? 0.95 : 0.85} stroke="#334155" strokeWidth="1.5" />
+              {isStar && !isStart && (
+                <text x={coords.x} y={coords.y + 5} fill="#F8FAFC" fontSize="14" textAnchor="middle" opacity="0.7">★</text>
               )}
             </g>
           );
         })}
 
-        {/* Central Hexagon Finish Hub */}
-        <polygon 
-          points={PLAYER_COLORS.map((_, i) => {
-            const rad = ((i * 60) - 90) * (Math.PI / 180);
-            return `${cx + 50 * Math.cos(rad)},${cy + 50 * Math.sin(rad)}`;
-          }).join(' ')} 
-          fill="#0F172A" 
-          stroke="#6366F1" 
-          strokeWidth="4" 
-          filter="url(#glowHex)"
-        />
-        <text x={cx} y={cy + 6} fill="#F8FAFC" fontSize="20" fontWeight="bold" textAnchor="middle">LUDO 6P</text>
+        {/* 6 Home Stretch Corridors */}
+        {PLAYER_COLORS.map((color, _cIdx) => {
+          return Array.from({ length: 6 }).map((_, sIdx) => {
+            const coords = getHomePathCoords(color, sIdx);
+            return (
+              <circle key={`home-spot-${color}-${sIdx}`} cx={coords.x} cy={coords.y} r="14" fill={COLOR_HEX_6P[color]} opacity="0.8" stroke="#0F172A" strokeWidth="1.5" />
+            );
+          });
+        })}
+
+        {/* Central Home Finish Ring */}
+        <circle cx={cx} cy={cy} r="45" fill="#0F172A" stroke="#6366F1" strokeWidth="4" />
+        <text x={cx} y={cy + 6} fill="#F8FAFC" fontSize="16" fontWeight="bold" textAnchor="middle">LUDO</text>
 
         {/* Tokens Rendering */}
         {allRenderTokens.map(tok => {
           const totalOccupants = cellOccupants[tok.cellKey]?.length || 1;
           const offsetInfo = tok.isYard 
-            ? { dx: 0, dy: 0, r: 13 } 
+            ? { dx: 0, dy: 0, r: 14 } 
             : getOccupantOffset(tok.occIdx, totalOccupants);
 
           const tokCx = tok.baseCx + offsetInfo.dx;
@@ -312,10 +350,10 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
 
           const player = players[tok.color];
           const options = (isMyTurn && tok.color === activeColor && !gameState.canRoll)
-            ? getValidRollOptionsForToken(player, tok.tIdx, gameState.dicePool, 77)
+            ? getValidRollOptionsForToken(player, tok.tIdx, gameState.dicePool, 76, killRequired)
             : [];
           const isMoveable = options.length > 0;
-          const colorHex = COLOR_HEX[tok.color] || '#FFF';
+          const colorHex = COLOR_HEX_6P[tok.color] || '#FFF';
 
           return (
             <g 
@@ -356,6 +394,7 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
                 r={r * 0.35} 
                 fill="#FFFFFF" 
                 opacity="0.5" 
+                className="token-specular"
               />
             </g>
           );
@@ -364,7 +403,7 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
         {/* Contextual Roll Selection Popover near clicked token */}
         {activePopup && (
           <g 
-            transform={`translate(${activePopup.coords.x}, ${Math.max(40, activePopup.coords.y - 36)})`}
+            transform={`translate(${activePopup.coords.x}, ${Math.max(35, activePopup.coords.y - 38)})`}
           >
             <rect 
               x={- (activePopup.options.length * 38 + 12) / 2} 

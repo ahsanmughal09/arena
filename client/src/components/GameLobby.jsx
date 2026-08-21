@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Copy, Check, Play, Users } from 'lucide-react';
+import { Copy, Check, Play } from 'lucide-react';
 import { sounds } from '../utils/audio';
 
 const COLOR_HEX = {
@@ -11,7 +11,7 @@ const COLOR_HEX = {
   purple: '#A55EEA'
 };
 
-export default function GameLobby({ roomCode, slots, settings, isHost, onStartGame }) {
+export default function GameLobby({ roomCode, slots, settings, isHost, onStartGame, onLeaveRoom }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopyCode = () => {
@@ -48,55 +48,46 @@ export default function GameLobby({ roomCode, slots, settings, isHost, onStartGa
         {/* Room Info */}
         <div style={{ display: 'flex', justifyContent: 'space-around', background: 'rgba(15, 23, 42, 0.5)', padding: '12px', borderRadius: '12px', marginBottom: '24px' }}>
           <div style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block' }}>Board Mode</span>
-            <strong style={{ color: '#FFF', fontSize: '0.95rem' }}>{settings.mode} ({maxPlayers} Players)</strong>
+            <span style={{ fontSize: '0.75rem', color: '#94A3B8', textTransform: 'uppercase' }}>Mode</span>
+            <div style={{ fontWeight: 700, color: '#FFF' }}>{settings.mode} ({settings.teamMode})</div>
           </div>
           <div style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block' }}>Teaming</span>
-            <strong style={{ color: '#2ED573', fontSize: '0.95rem' }}>{settings.teamMode.toUpperCase()}</strong>
+            <span style={{ fontSize: '0.75rem', color: '#94A3B8', textTransform: 'uppercase' }}>Timer</span>
+            <div style={{ fontWeight: 700, color: '#FFF' }}>{settings.turnTimer}s</div>
           </div>
           <div style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'block' }}>Timer</span>
-            <strong style={{ color: '#FFA502', fontSize: '0.95rem' }}>{settings.turnTimer > 0 ? `${settings.turnTimer}s` : 'Off'}</strong>
+            <span style={{ fontSize: '0.75rem', color: '#94A3B8', textTransform: 'uppercase' }}>Players</span>
+            <div style={{ fontWeight: 700, color: '#FFF' }}>{connectedCount} / {maxPlayers}</div>
           </div>
         </div>
 
-        {/* Player Slots List */}
+        {/* Player Slots */}
         <div style={{ marginBottom: '28px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#CBD5E1', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Users size={16} color="#818CF8" /> Joined Players ({connectedCount}/{maxPlayers})
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {slots && Object.keys(slots).map(color => {
-              const slot = slots[color];
+          <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#94A3B8', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Connected Players
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            {(settings.mode === '4P' ? ['red', 'green', 'yellow', 'blue'] : ['red', 'green', 'yellow', 'blue', 'orange', 'purple']).map(color => {
+              const slot = slots ? slots[color] : null;
               const isConnected = slot && slot.connected;
-              const colorHex = COLOR_HEX[color];
-
               return (
                 <div 
                   key={`slot-${color}`}
                   style={{
-                    padding: '12px 16px',
-                    borderRadius: '12px',
-                    background: isConnected ? 'rgba(30, 41, 59, 0.7)' : 'rgba(15, 23, 42, 0.4)',
-                    border: `1px solid ${isConnected ? colorHex : 'rgba(255,255,255,0.08)'}`,
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between'
+                    justifyContent: 'space-between',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    background: isConnected ? 'rgba(30, 41, 59, 0.8)' : 'rgba(15, 23, 42, 0.4)',
+                    border: `1px solid ${isConnected ? COLOR_HEX[color] : 'rgba(255,255,255,0.05)'}`
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: colorHex }} />
-                    <div>
-                      <span style={{ fontWeight: 600, color: isConnected ? '#FFF' : '#64748B' }}>
-                        {isConnected ? slot.name : `Waiting for ${color.toUpperCase()}...`}
-                      </span>
-                      {slot.isHost && (
-                        <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#818CF8', fontWeight: 700 }}>Host</span>
-                      )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: COLOR_HEX[color] }} />
+                    <div style={{ fontSize: '0.9rem', fontWeight: isConnected ? 700 : 400, color: isConnected ? '#FFF' : '#64748B' }}>
+                      {isConnected ? slot.name : 'Waiting...'}
+                      {slot?.isHost && <span style={{ fontSize: '0.7rem', color: '#818CF8', marginLeft: '6px' }}>(Host)</span>}
                     </div>
                   </div>
 
@@ -109,21 +100,43 @@ export default function GameLobby({ roomCode, slots, settings, isHost, onStartGa
           </div>
         </div>
 
-        {/* Start Game Button (Host Only) */}
-        {isHost ? (
-          <button 
-            onClick={() => { sounds.playClick(); onStartGame(); }}
-            disabled={connectedCount < 2}
-            className="glass-btn primary" 
-            style={{ width: '100%', justifyContent: 'center', padding: '14px', fontSize: '1.1rem', opacity: connectedCount < 2 ? 0.5 : 1 }}
-          >
-            <Play size={20} /> {connectedCount < 2 ? 'Need At Least 2 Players To Start' : 'Start Match Now'}
-          </button>
-        ) : (
-          <div style={{ textAlign: 'center', color: '#94A3B8', fontStyle: 'italic', fontSize: '0.9rem' }}>
-            Waiting for the room host to start the match...
-          </div>
-        )}
+        {/* Action Buttons */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {isHost ? (
+            <button 
+              onClick={() => { sounds.playClick(); onStartGame(); }}
+              disabled={connectedCount < 2}
+              className="glass-btn primary" 
+              style={{ width: '100%', justifyContent: 'center', padding: '14px', fontSize: '1.1rem', opacity: connectedCount < 2 ? 0.5 : 1 }}
+            >
+              <Play size={20} /> {connectedCount < 2 ? 'Need At Least 2 Players To Start' : 'Start Match Now'}
+            </button>
+          ) : (
+            <div style={{ textAlign: 'center', color: '#94A3B8', fontStyle: 'italic', fontSize: '0.9rem', marginBottom: '4px' }}>
+              Waiting for the room host to start the match...
+            </div>
+          )}
+
+          {onLeaveRoom && (
+            <button 
+              onClick={onLeaveRoom}
+              style={{
+                width: '100%',
+                background: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                color: '#EF4444',
+                fontWeight: 700,
+                padding: '12px',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                fontSize: '0.95rem',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              🚪 Leave Room
+            </button>
+          )}
+        </div>
 
       </div>
     </div>

@@ -163,6 +163,24 @@ export default function App() {
     setGameState(null);
   };
 
+  const handleLeaveRoom = () => {
+    const isPlaying = (view === 'game');
+    const confirmText = isPlaying 
+      ? 'Are you sure you want to surrender and leave the match?' 
+      : 'Are you sure you want to leave the room?';
+
+    if (window.confirm(confirmText)) {
+      sounds.playClick();
+      socket.emit('LEAVE_ROOM', { roomCode, color: myColor });
+      sessionStorage.removeItem('ludo_session');
+      setView('home');
+      setRoomCode('');
+      setMyColor('');
+      setGameState(null);
+      setSlots({});
+    }
+  };
+
   const isHost = slots[myColor]?.isHost;
   const isMyTurn = gameState && gameState.activeColor === myColor;
 
@@ -182,6 +200,7 @@ export default function App() {
           settings={settings} 
           isHost={isHost} 
           onStartGame={handleStartGame} 
+          onLeaveRoom={handleLeaveRoom}
         />
       )}
 
@@ -215,6 +234,25 @@ export default function App() {
               <span style={{ fontWeight: 700, color: `#${myColor}`, background: 'rgba(30, 41, 59, 0.8)', padding: '4px 12px', borderRadius: '12px', textTransform: 'uppercase' }}>
                 {myColor}
               </span>
+              <button 
+                onClick={handleLeaveRoom}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.2)',
+                  border: '1px solid rgba(239, 68, 68, 0.5)',
+                  color: '#EF4444',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  padding: '6px 14px',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                🚪 Surrender / Leave
+              </button>
             </div>
           </div>
 

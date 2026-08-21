@@ -99,6 +99,24 @@ io.on('connection', (socket) => {
     });
   });
 
+  // Leave / Surrender Room
+  socket.on('LEAVE_ROOM', ({ roomCode }, callback) => {
+    const res = roomManager.leaveRoom(socket.id);
+    if (res) {
+      socket.leave(roomCode);
+      if (typeof callback === 'function') callback({ success: true });
+      if (!res.empty) {
+        io.to(res.roomCode).emit('ROOM_UPDATED', { slots: res.room.playerSlots, settings: res.room.settings });
+        io.to(res.roomCode).emit('GAME_STATE_UPDATE', { state: res.room.engine.getGameState() });
+        io.to(res.roomCode).emit('CHAT_MESSAGE', {
+          sender: 'System',
+          text: `A player surrendered/left the room.`,
+          time: new Date().toLocaleTimeString()
+        });
+      }
+    }
+  });
+
   // Start Game
   socket.on('START_GAME', ({ roomCode }, callback) => {
     const result = roomManager.startGame(socket.id, roomCode);

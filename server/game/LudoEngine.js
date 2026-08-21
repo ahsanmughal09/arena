@@ -413,7 +413,7 @@ class LudoEngine {
           if (this.players[movingColor]) {
             this.players[movingColor].kills = (this.players[movingColor].kills || 0) + 1;
           }
-          return { color, tokenIndex: tIdx };
+          return { color, tokenIndex: tIdx, oldStep: step };
         }
       }
     }

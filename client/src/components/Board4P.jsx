@@ -18,7 +18,7 @@ const MAIN_TRACK_4P = [
   { c: 0, r: 7 }, // left tip (51)
 ];
 
-// Home paths for each color (steps 52..57)
+// Home paths for each color (steps 51..56)
 const HOME_PATHS_4P = {
   red:    [{ c: 1, r: 7 }, { c: 2, r: 7 }, { c: 3, r: 7 }, { c: 4, r: 7 }, { c: 5, r: 7 }, { c: 6, r: 7 }],
   green:  [{ c: 7, r: 1 }, { c: 7, r: 2 }, { c: 7, r: 3 }, { c: 7, r: 4 }, { c: 7, r: 5 }, { c: 7, r: 6 }],
@@ -104,11 +104,75 @@ function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 
 
 export default function Board4P({ gameState, myColor, onMoveToken }) {
   const [activePopup, setActivePopup] = useState(null);
+  const [displaySteps, setDisplaySteps] = useState({});
 
   useEffect(() => {
     const anim = requestAnimationFrame(() => setActivePopup(null));
     return () => cancelAnimationFrame(anim);
   }, [gameState?.activeColor, gameState?.dicePool?.length]);
+
+  // Step-by-Step animated movement & capture return loop
+  useEffect(() => {
+    const action = gameState?.lastAction;
+    if (!action || action.type !== 'MOVE') return;
+
+    const { color, tokenIndex, oldStep, newStep, captured } = action;
+    const key = `${color}-${tokenIndex}`;
+
+    let current = oldStep === -1 ? 0 : oldStep;
+    const target = newStep;
+
+    if (current === target) return;
+
+    const timer = setTimeout(() => {
+      setDisplaySteps(prev => ({ ...prev, [key]: current }));
+    }, 0);
+
+    const stepInterval = setInterval(() => {
+      current++;
+      sounds.playTokenStep();
+      setDisplaySteps(prev => ({ ...prev, [key]: current }));
+
+      if (current >= target) {
+        clearInterval(stepInterval);
+
+        if (captured) {
+          sounds.playCapture();
+          const capKey = `${captured.color}-${captured.tokenIndex}`;
+          let capStep = (captured.oldStep !== undefined && captured.oldStep >= 0) ? captured.oldStep : target;
+          
+          setDisplaySteps(prev => ({ ...prev, [capKey]: capStep }));
+
+          const capInterval = setInterval(() => {
+            capStep = capStep - 1;
+            setDisplaySteps(prev => ({ ...prev, [capKey]: capStep }));
+            if (capStep <= -1) {
+              clearInterval(capInterval);
+              setDisplaySteps(prev => {
+                const next = { ...prev };
+                delete next[capKey];
+                delete next[key];
+                return next;
+              });
+            }
+          }, 40);
+        } else {
+          setTimeout(() => {
+            setDisplaySteps(prev => {
+              const next = { ...prev };
+              delete next[key];
+              return next;
+            });
+          }, 150);
+        }
+      }
+    }, 120);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(stepInterval);
+    };
+  }, [gameState?.lastAction]);
 
   if (!gameState) return null;
 
@@ -151,27 +215,31 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
       if (!player) return;
 
       player.tokens.forEach((step, tIdx) => {
+        const stepToRender = displaySteps[`${color}-${tIdx}`] !== undefined 
+          ? displaySteps[`${color}-${tIdx}`] 
+          : step;
+
         let key;
         let baseCx = 300;
         let baseCy = 300;
         let isYard = false;
 
-        if (step === -1) {
+        if (stepToRender === -1) {
           isYard = true;
           const spots = YARD_SPOTS_4P[color] || YARD_SPOTS_4P.red;
           const spot = spots[tIdx] || spots[0];
           baseCx = spot.c * cs + cs / 2;
           baseCy = spot.r * cs + cs / 2;
           key = `yard-${color}-${tIdx}`;
-        } else if (step < 51) {
+        } else if (stepToRender < 51) {
           const startPos = color === 'red' ? 0 : color === 'green' ? 13 : color === 'yellow' ? 26 : 39;
-          const absIndex = (startPos + step) % 52;
+          const absIndex = (startPos + stepToRender) % 52;
           const cell = MAIN_TRACK_4P[absIndex] || MAIN_TRACK_4P[0];
           baseCx = cell.c * cs + cs / 2;
           baseCy = cell.r * cs + cs / 2;
           key = `main-${absIndex}`;
         } else {
-          const homeStep = step - 51;
+          const homeStep = stepToRender - 51;
           const path = HOME_PATHS_4P[color] || HOME_PATHS_4P.red;
           const cell = path[Math.min(homeStep, 5)] || path[5];
           baseCx = cell.c * cs + cs / 2;
@@ -187,7 +255,7 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
           key: `token-${color}-${tIdx}`,
           color,
           tIdx,
-          step,
+          step: stepToRender,
           baseCx,
           baseCy,
           cellKey: key,
@@ -288,7 +356,7 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
 
           const player = players[tok.color];
           const options = (isMyTurn && tok.color === activeColor && !gameState.canRoll)
-            ? getValidRollOptionsForToken(player, tok.tIdx, gameState.dicePool, 57)
+            ? getValidRollOptionsForToken(player, tok.tIdx, gameState.dicePool, 56, killRequired)
             : [];
           const isMoveable = options.length > 0;
           const colorHex = COLOR_HEX_4P[tok.color] || '#FFF';
@@ -332,6 +400,7 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
                 r={r * 0.35} 
                 fill="#FFFFFF" 
                 opacity="0.5" 
+                className="token-specular"
               />
             </g>
           );
