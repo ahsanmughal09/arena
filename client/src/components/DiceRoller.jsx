@@ -1,6 +1,66 @@
 import React, { useState, useEffect } from 'react';
 import { sounds } from '../utils/audio';
 
+function SingleDiceCube({ val, rolling, isMyTurn, canRoll, showingSixDelay }) {
+  const getDiceDots = (num) => {
+    switch (num) {
+      case 1: return [{ x: 50, y: 50 }];
+      case 2: return [{ x: 30, y: 30 }, { x: 70, y: 70 }];
+      case 3: return [{ x: 25, y: 25 }, { x: 50, y: 50 }, { x: 75, y: 75 }];
+      case 4: return [{ x: 30, y: 30 }, { x: 70, y: 30 }, { x: 30, y: 70 }, { x: 70, y: 70 }];
+      case 5: return [{ x: 25, y: 25 }, { x: 75, y: 25 }, { x: 50, y: 50 }, { x: 25, y: 75 }, { x: 75, y: 75 }];
+      case 6: return [{ x: 30, y: 25 }, { x: 30, y: 50 }, { x: 30, y: 75 }, { x: 70, y: 25 }, { x: 70, y: 50 }, { x: 70, y: 75 }];
+      default: return [{ x: 50, y: 50 }];
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+      <div 
+        style={{
+          width: '68px',
+          height: '68px',
+          borderRadius: '16px',
+          background: (isMyTurn && canRoll && !showingSixDelay) ? 'linear-gradient(145deg, #FFFFFF, #E2E8F0)' : '#334155',
+          boxShadow: (isMyTurn && canRoll && !showingSixDelay) ? '0 10px 25px rgba(255, 255, 255, 0.25), inset 0 2px 4px #FFF' : 'none',
+          border: '2px solid rgba(255,255,255,0.4)',
+          transform: rolling ? 'rotate(360deg) scale(1.1)' : 'scale(1)',
+          transition: 'all 0.4s ease',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          position: 'relative'
+        }}
+      >
+        <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
+          {val && getDiceDots(val).map((dot, idx) => (
+            <circle key={`dot-${idx}`} cx={dot.x} cy={dot.y} r="8" fill={(isMyTurn && canRoll && !showingSixDelay) ? '#0F172A' : '#F8FAFC'} />
+          ))}
+          {!val && !rolling && (
+            <text x="50" y="58" fill={(isMyTurn && canRoll) ? '#0F172A' : '#94A3B8'} fontSize="30" fontWeight="bold" textAnchor="middle">
+              ?
+            </text>
+          )}
+        </svg>
+      </div>
+
+      {val !== null && val !== undefined && (
+        <span style={{ 
+          fontSize: '0.8rem', 
+          fontWeight: 800, 
+          color: val === 6 ? '#22C55E' : '#F8FAFC', 
+          background: 'rgba(30, 41, 59, 0.8)', 
+          padding: '2px 10px', 
+          borderRadius: '10px', 
+          border: '1px solid rgba(255,255,255,0.2)' 
+        }}>
+          Dice: {val}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export default function DiceRoller({ 
   currentDice, 
   dicePool = [], 
@@ -9,7 +69,8 @@ export default function DiceRoller({
   isMyTurn, 
   activeColor, 
   onRollDice, 
-  onSelectRoll 
+  onSelectRoll,
+  diceCount = 1
 }) {
   const [rolling, setRolling] = useState(false);
   const [showingSixDelay, setShowingSixDelay] = useState(false);
@@ -17,7 +78,8 @@ export default function DiceRoller({
   useEffect(() => {
     let timer;
     let anim;
-    if (canRoll && currentDice === 6 && !rolling) {
+    const hasSixRolled = Array.isArray(currentDice) ? currentDice.includes(6) : (currentDice === 6);
+    if (canRoll && hasSixRolled && !rolling) {
       anim = requestAnimationFrame(() => {
         setShowingSixDelay(true);
       });
@@ -43,21 +105,20 @@ export default function DiceRoller({
     }, 600);
   };
 
-  const getDiceDots = (num) => {
-    switch (num) {
-      case 1: return [{ x: 50, y: 50 }];
-      case 2: return [{ x: 30, y: 30 }, { x: 70, y: 70 }];
-      case 3: return [{ x: 25, y: 25 }, { x: 50, y: 50 }, { x: 75, y: 75 }];
-      case 4: return [{ x: 30, y: 30 }, { x: 70, y: 30 }, { x: 30, y: 70 }, { x: 70, y: 70 }];
-      case 5: return [{ x: 25, y: 25 }, { x: 75, y: 25 }, { x: 50, y: 50 }, { x: 25, y: 75 }, { x: 75, y: 75 }];
-      case 6: return [{ x: 30, y: 25 }, { x: 30, y: 50 }, { x: 30, y: 75 }, { x: 70, y: 25 }, { x: 70, y: 50 }, { x: 70, y: 75 }];
-      default: return [{ x: 50, y: 50 }];
-    }
-  };
+  const isDualDice = (diceCount === 2) || Array.isArray(currentDice);
+  let displayVal1 = null;
+  let displayVal2 = null;
+  let displayDiceVal = null;
 
-  const displayDiceVal = showingSixDelay 
-    ? 6 
-    : (canRoll ? null : (dicePool[selectedRollIndex] || currentDice || null));
+  if (isDualDice) {
+    const arr = Array.isArray(currentDice) ? currentDice : [null, null];
+    displayVal1 = showingSixDelay ? (arr[0] === 6 ? 6 : arr[0]) : (canRoll ? null : arr[0]);
+    displayVal2 = showingSixDelay ? (arr[1] === 6 ? 6 : arr[1]) : (canRoll ? null : arr[1]);
+  } else {
+    displayDiceVal = showingSixDelay 
+      ? 6 
+      : (canRoll ? null : (dicePool[selectedRollIndex] || currentDice || null));
+  }
 
   const showBalance = dicePool && dicePool.length > 1;
 
@@ -103,35 +164,19 @@ export default function DiceRoller({
         </div>
       )}
 
-      {/* Main Dice Cube */}
+      {/* Main Dice Cube(s) */}
       <div 
         onClick={handleRoll}
-        style={{
-          width: '76px',
-          height: '76px',
-          borderRadius: '16px',
-          background: (isMyTurn && canRoll && !showingSixDelay) ? 'linear-gradient(145deg, #FFFFFF, #E2E8F0)' : '#334155',
-          boxShadow: (isMyTurn && canRoll && !showingSixDelay) ? '0 10px 25px rgba(255, 255, 255, 0.25), inset 0 2px 4px #FFF' : 'none',
-          border: '2px solid rgba(255,255,255,0.4)',
-          cursor: (isMyTurn && canRoll && !showingSixDelay) ? 'pointer' : 'default',
-          transform: rolling ? 'rotate(360deg) scale(1.1)' : 'scale(1)',
-          transition: 'all 0.4s ease',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          position: 'relative'
-        }}
+        style={{ display: 'flex', gap: '12px', cursor: (isMyTurn && canRoll && !showingSixDelay) ? 'pointer' : 'default' }}
       >
-        <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
-          {displayDiceVal && getDiceDots(displayDiceVal).map((dot, idx) => (
-            <circle key={`dot-${idx}`} cx={dot.x} cy={dot.y} r="8" fill={(isMyTurn && canRoll && !showingSixDelay) ? '#0F172A' : '#F8FAFC'} />
-          ))}
-          {!displayDiceVal && !rolling && (
-            <text x="50" y="58" fill={(isMyTurn && canRoll) ? '#0F172A' : '#94A3B8'} fontSize="32" fontWeight="bold" textAnchor="middle">
-              ?
-            </text>
-          )}
-        </svg>
+        {isDualDice ? (
+          <>
+            <SingleDiceCube val={displayVal1} rolling={rolling} isMyTurn={isMyTurn} canRoll={canRoll} showingSixDelay={showingSixDelay} />
+            <SingleDiceCube val={displayVal2} rolling={rolling} isMyTurn={isMyTurn} canRoll={canRoll} showingSixDelay={showingSixDelay} />
+          </>
+        ) : (
+          <SingleDiceCube val={displayDiceVal} rolling={rolling} isMyTurn={isMyTurn} canRoll={canRoll} showingSixDelay={showingSixDelay} />
+        )}
       </div>
 
       {/* Helper text */}

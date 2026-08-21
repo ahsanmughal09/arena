@@ -103,8 +103,8 @@ export default function App() {
   }, []);
 
   // Handlers
-  const handleCreateRoom = ({ name, mode, teamMode, turnTimer, extraTurnOnKill, extraTurnOnHome, killRequiredToEnterHome }) => {
-    socket.emit('CREATE_ROOM', { name, mode, teamMode, turnTimer, extraTurnOnKill, extraTurnOnHome, killRequiredToEnterHome }, (res) => {
+  const handleCreateRoom = ({ name, mode, teamMode, turnTimer, diceCount, extraTurnOnKill, extraTurnOnHome, killRequiredToEnterHome }) => {
+    socket.emit('CREATE_ROOM', { name, mode, teamMode, turnTimer, diceCount, extraTurnOnKill, extraTurnOnHome, killRequiredToEnterHome }, (res) => {
       if (res.success) {
         setRoomCode(res.roomCode);
         setMyColor(res.color);
@@ -198,6 +198,11 @@ export default function App() {
               <span style={{ fontSize: '0.85rem', color: '#CBD5E1', background: 'rgba(255,255,255,0.08)', padding: '4px 12px', borderRadius: '12px' }}>
                 Room: <strong style={{ color: '#818CF8' }}>{roomCode}</strong>
               </span>
+              {gameState.customRules?.diceCount === 2 && (
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#2ED573', background: 'rgba(46, 213, 115, 0.15)', border: '1px solid rgba(46, 213, 115, 0.3)', padding: '2px 8px', borderRadius: '8px' }}>
+                  🎲 2 Dice Mode
+                </span>
+              )}
               {gameState.customRules?.killRequiredToEnterHome && (
                 <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#FFA502', background: 'rgba(255, 165, 2, 0.15)', border: '1px solid rgba(255, 165, 2, 0.3)', padding: '2px 8px', borderRadius: '8px' }}>
                   🎯 Kill Required for Home
@@ -260,6 +265,7 @@ export default function App() {
                   activeColor={gameState.activeColor}
                   onRollDice={handleRollDice}
                   onSelectRoll={handleSelectRoll}
+                  diceCount={gameState.customRules?.diceCount || 1}
                 />
               </div>
 

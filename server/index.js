@@ -27,9 +27,10 @@ io.on('connection', (socket) => {
   console.log(`Socket connected: ${socket.id}`);
 
   // Create Room
-  socket.on('CREATE_ROOM', ({ name, mode, teamMode, turnTimer }, callback) => {
+  socket.on('CREATE_ROOM', (payload, callback) => {
     try {
-      const room = roomManager.createRoom(socket, name, { mode, teamMode, turnTimer });
+      const { name, ...settings } = payload || {};
+      const room = roomManager.createRoom(socket, name, settings);
       const response = {
         roomCode: room.code,
         color: 'red',

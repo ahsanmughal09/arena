@@ -15,6 +15,7 @@ class LudoEngine {
     this.turnTimer = turnTimer;
     
     this.customRules = {
+      diceCount: parseInt(customRules.diceCount || 1, 10),
       extraTurnOnKill: customRules.extraTurnOnKill !== false,
       extraTurnOnHome: customRules.extraTurnOnHome !== false,
       killRequiredToEnterHome: customRules.killRequiredToEnterHome !== false
@@ -145,6 +146,50 @@ class LudoEngine {
   rollDice() {
     if (!this.gameStarted || this.gameOver || !this.canRoll) return null;
 
+    if (this.customRules.diceCount === 2) {
+      const roll1 = Math.floor(Math.random() * 6) + 1;
+      const roll2 = Math.floor(Math.random() * 6) + 1;
+      this.currentDice = [roll1, roll2];
+
+      const isDoubleSix = (roll1 === 6 && roll2 === 6);
+
+      if (isDoubleSix) {
+        this.consecutiveSixes += 2;
+        if (this.consecutiveSixes >= 4) { // 4 sixes across 2 rolls -> penalty!
+          this.consecutiveSixes = 0;
+          this.dicePool = [];
+          this.canRoll = false;
+          this.validMoves = [];
+          this.lastAction = { type: 'FOUR_SIXES_PENALTY', color: this.getActiveColor(), rolled: [6, 6] };
+          this.nextTurn();
+          return { roll: [6, 6], penalty: true, dicePool: [], canRoll: false, validMoves: [] };
+        }
+
+        // Double 6s grants extra roll turn!
+        this.dicePool.push(6, 6);
+        this.canRoll = true;
+        this.validMoves = [];
+        this.lastAction = { type: 'ROLLED_DOUBLE_SIX', color: this.getActiveColor(), rolled: [6, 6], dicePool: [...this.dicePool] };
+        return { roll: [6, 6], penalty: false, dicePool: this.dicePool, canRoll: true, validMoves: [] };
+      }
+
+      // Non-double 6s roll (e.g. [6, 4] or [3, 2]): push both, no extra roll turn
+      this.consecutiveSixes = 0;
+      this.dicePool.push(roll1, roll2);
+      this.canRoll = false;
+
+      this.autoSelectValidRoll();
+
+      if (this.validMoves.length === 0) {
+        this.lastAction = { type: 'NO_VALID_MOVES', color: this.getActiveColor(), rolled: [roll1, roll2], dicePool: [...this.dicePool] };
+      } else {
+        this.lastAction = { type: 'ROLLED_DICE', color: this.getActiveColor(), rolled: [roll1, roll2], dicePool: [...this.dicePool] };
+      }
+
+      return { roll: [roll1, roll2], penalty: false, dicePool: this.dicePool, canRoll: false, validMoves: this.validMoves };
+    }
+
+    // Standard 1-Dice Roll logic
     const roll = Math.floor(Math.random() * 6) + 1;
     this.currentDice = roll;
 

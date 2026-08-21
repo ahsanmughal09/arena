@@ -11,6 +11,7 @@ export default function HomeLobby({ onCreateRoom, onJoinRoom }) {
   const [mode, setMode] = useState('4P'); // '4P' or '6P'
   const [teamMode, setTeamMode] = useState('2v2'); // 4P: 'solo', '2v2' | 6P: 'solo', '3v3', '2v2v2'
   const [turnTimer, setTurnTimer] = useState('30');
+  const [diceCount, setDiceCount] = useState(1); // 1 or 2
 
   // Custom House Rules Toggles
   const [extraTurnOnKill, setExtraTurnOnKill] = useState(true);
@@ -39,6 +40,7 @@ export default function HomeLobby({ onCreateRoom, onJoinRoom }) {
       mode, 
       teamMode, 
       turnTimer, 
+      diceCount,
       extraTurnOnKill, 
       extraTurnOnHome, 
       killRequiredToEnterHome 
@@ -198,6 +200,31 @@ export default function HomeLobby({ onCreateRoom, onJoinRoom }) {
                   </button>
                 </div>
               )}
+            </div>
+
+            {/* Dice Count Selection */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#CBD5E1', marginBottom: '8px' }}>
+                🎲 Dice Mode (1 Dice or 2 Dice)
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <button 
+                  type="button" 
+                  onClick={() => { sounds.playClick(); setDiceCount(1); }}
+                  className={`glass-btn ${diceCount === 1 ? 'primary' : ''}`}
+                  style={{ justifyContent: 'center' }}
+                >
+                  1 Dice (Classic)
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => { sounds.playClick(); setDiceCount(2); }}
+                  className={`glass-btn ${diceCount === 2 ? 'primary' : ''}`}
+                  style={{ justifyContent: 'center' }}
+                >
+                  2 Dice (Dual Roll)
+                </button>
+              </div>
             </div>
 
             {/* Turn Timer Selection */}
