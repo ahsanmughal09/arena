@@ -9,16 +9,16 @@ const MAIN_TRACK_4P = [
   { c: 7, r: 0 }, // top tip (11)
   { c: 8, r: 0 }, { c: 8, r: 1 }, { c: 8, r: 2 }, { c: 8, r: 3 }, { c: 8, r: 4 }, { c: 8, r: 5 }, // Green start at step 13 (8, 1)
   { c: 9, r: 6 }, { c: 10, r: 6 }, { c: 11, r: 6 }, { c: 12, r: 6 }, { c: 13, r: 6 }, { c: 14, r: 6 },
-  { c: 14, r: 7 }, // right tip (25)
+  { c: 14, r: 7 }, // right tip (24)
   { c: 14, r: 8 }, { c: 13, r: 8 }, { c: 12, r: 8 }, { c: 11, r: 8 }, { c: 10, r: 8 }, { c: 9, r: 8 }, // Yellow start at step 26 (13, 8)
   { c: 8, r: 9 }, { c: 8, r: 10 }, { c: 8, r: 11 }, { c: 8, r: 12 }, { c: 8, r: 13 }, { c: 8, r: 14 },
-  { c: 7, r: 14 }, // bottom tip (38)
+  { c: 7, r: 14 }, // bottom tip (37)
   { c: 6, r: 14 }, { c: 6, r: 13 }, { c: 6, r: 12 }, { c: 6, r: 11 }, { c: 6, r: 10 }, { c: 6, r: 9 }, // Blue start at step 39 (6, 13)
   { c: 5, r: 8 }, { c: 4, r: 8 }, { c: 3, r: 8 }, { c: 2, r: 8 }, { c: 1, r: 8 }, { c: 0, r: 8 },
-  { c: 0, r: 7 }, // left tip (51)
+  { c: 0, r: 7 }, { c: 0, r: 6 }, // left tip (50) & 1 square before Red start (51)
 ];
 
-// Home paths for each color (steps 51..56)
+// Home paths for each color (steps 52..57)
 const HOME_PATHS_4P = {
   red:    [{ c: 1, r: 7 }, { c: 2, r: 7 }, { c: 3, r: 7 }, { c: 4, r: 7 }, { c: 5, r: 7 }, { c: 6, r: 7 }],
   green:  [{ c: 7, r: 1 }, { c: 7, r: 2 }, { c: 7, r: 3 }, { c: 7, r: 4 }, { c: 7, r: 5 }, { c: 7, r: 6 }],
@@ -28,14 +28,23 @@ const HOME_PATHS_4P = {
 
 // Yard token display coords (col, row)
 const YARD_SPOTS_4P = {
-  red:    [{ c: 1.5, r: 1.5 }, { c: 3.5, r: 1.5 }, { c: 1.5, r: 3.5 }, { c: 3.5, r: 3.5 }],
-  green:  [{ c: 10.5, r: 1.5 }, { c: 12.5, r: 1.5 }, { c: 10.5, r: 3.5 }, { c: 12.5, r: 3.5 }],
-  yellow: [{ c: 10.5, r: 10.5 }, { c: 12.5, r: 10.5 }, { c: 10.5, r: 12.5 }, { c: 12.5, r: 12.5 }],
-  blue:   [{ c: 1.5, r: 10.5 }, { c: 3.5, r: 10.5 }, { c: 1.5, r: 12.5 }, { c: 3.5, r: 12.5 }]
+  red:    [{ c: 1, r: 1 }, { c: 3, r: 1 }, { c: 1, r: 3 }, { c: 3, r: 3 }],
+  green:  [{ c: 10, r: 1 }, { c: 12, r: 1 }, { c: 10, r: 3 }, { c: 12, r: 3 }],
+  yellow: [{ c: 10, r: 10 }, { c: 12, r: 10 }, { c: 10, r: 12 }, { c: 12, r: 12 }],
+  blue:   [{ c: 1, r: 10 }, { c: 3, r: 10 }, { c: 1, r: 12 }, { c: 3, r: 12 }]
 };
 
-const SAFE_INDICES_4P = [0, 8, 13, 21, 26, 34, 39, 47];
-const STAR_SPOTS_4P = SAFE_INDICES_4P.map(idx => MAIN_TRACK_4P[idx]);
+// Safe star spots indices on main track (0..51)
+const STAR_SPOTS_4P = [
+  { c: 1, r: 6 },  // Red start (step 0)
+  { c: 6, r: 2 },  // Step 8 (Green domain safe)
+  { c: 8, r: 1 },  // Green start (step 13)
+  { c: 12, r: 6 }, // Step 21 (Yellow domain safe)
+  { c: 13, r: 8 }, // Yellow start (step 26)
+  { c: 8, r: 12 }, // Step 34 (Blue domain safe)
+  { c: 6, r: 13 }, // Blue start (step 39)
+  { c: 2, r: 8 },  // Step 47 (Red domain safe)
+];
 
 const COLOR_HEX_4P = {
   red: '#FF4757',
@@ -69,12 +78,12 @@ function getOccupantOffset(occupantIndex, totalOccupants) {
   return { ...offsets[occupantIndex % 4], r: 8.5 };
 }
 
-function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 56, killRequired = false) {
+function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 57, killRequired = false) {
   if (!player || !player.tokens || !dicePool || dicePool.length === 0) return [];
   const step = player.tokens[tokenIndex];
   if (step === undefined) return [];
 
-  const maxStepWithoutKill = 50;
+  const outerLen = 52;
   const canPassLastSafe = !killRequired || ((player.kills || 0) > 0);
 
   const options = [];
@@ -84,12 +93,14 @@ function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 
     let isValid = false;
     if (step === -1) {
       if (roll === 6) isValid = true;
-    } else if (step < finishStep) {
-      const newStep = step + roll;
-      if (newStep <= finishStep) {
-        if (canPassLastSafe || newStep <= maxStepWithoutKill) {
-          isValid = true;
-        }
+    } else if (step >= outerLen) {
+      if (step + roll <= finishStep) isValid = true;
+    } else {
+      if (canPassLastSafe) {
+        if (step + roll <= finishStep) isValid = true;
+      } else {
+        // Without kill: token loops around main perimeter track!
+        isValid = true;
       }
     }
 
@@ -142,12 +153,18 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
       setDisplaySteps(prev => ({ ...prev, [key]: current }));
     }, 0);
 
+    const isLoopAround = (oldStep >= 0 && oldStep < 52 && target < oldStep);
+
     const stepInterval = setInterval(() => {
-      current++;
+      if (isLoopAround) {
+        current = (current + 1) % 52;
+      } else {
+        current++;
+      }
       sounds.playTokenStep();
       setDisplaySteps(prev => ({ ...prev, [key]: current }));
 
-      if (current >= target) {
+      if (current === target) {
         clearInterval(stepInterval);
 
         if (captured) {
@@ -203,7 +220,7 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
     if (!isMyTurn || color !== activeColor || gameState.canRoll) return;
 
     const player = players[color];
-    const options = getValidRollOptionsForToken(player, tokenIndex, gameState.dicePool, 56, killRequired);
+    const options = getValidRollOptionsForToken(player, tokenIndex, gameState.dicePool, 57, killRequired);
 
     if (options.length === 0) return;
 
@@ -253,7 +270,7 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
           baseCx = spot.c * cs + cs / 2;
           baseCy = spot.r * cs + cs / 2;
           key = `yard-${color}-${tIdx}`;
-        } else if (stepToRender < 51) {
+        } else if (stepToRender < 52) {
           const startPos = color === 'red' ? 0 : color === 'green' ? 13 : color === 'yellow' ? 26 : 39;
           const absIndex = (startPos + stepToRender) % 52;
           const cell = MAIN_TRACK_4P[absIndex] || MAIN_TRACK_4P[0];
@@ -261,7 +278,7 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
           baseCy = cell.r * cs + cs / 2;
           key = `main-${absIndex}`;
         } else {
-          const homeStep = stepToRender - 51;
+          const homeStep = stepToRender - 52;
           const path = HOME_PATHS_4P[color] || HOME_PATHS_4P.red;
           const cell = path[Math.min(homeStep, 5)] || path[5];
           baseCx = cell.c * cs + cs / 2;

@@ -23,9 +23,9 @@ class LudoEngine {
 
     this.colors = mode === '4P' ? PLAYER_COLORS_4P : PLAYER_COLORS_6P;
     this.trackLength = mode === '4P' ? 52 : 72;
-    this.outerTrackLength = mode === '4P' ? 51 : 71;
+    this.outerTrackLength = mode === '4P' ? 52 : 72;
     this.homeLength = 6;
-    this.finishStep = mode === '4P' ? 56 : 76; // -1: yard, 0..outerTrackLength-1: main, outerTrackLength..finishStep: home stretch (56/76 is finished)
+    this.finishStep = mode === '4P' ? 57 : 77; // -1: yard, 0..outerTrackLength-1: main, outerTrackLength..finishStep: home stretch (57/77 is finished)
     
     this.startPositions = mode === '4P' ? {
       red: 0,
@@ -257,8 +257,7 @@ class LudoEngine {
     if (!player || !roll) return [];
 
     const valid = [];
-    // Max step index a token can reach without a kill when killRequiredToEnterHome is active (50 in 4P, 70 in 6P)
-    const maxStepWithoutKill = this.mode === '4P' ? 50 : 70;
+    const outerLen = this.outerTrackLength || (this.mode === '4P' ? 51 : 71);
     const canPassLastSafe = !this.customRules.killRequiredToEnterHome || ((player.kills || 0) > 0);
 
     player.tokens.forEach((step, tokenIndex) => {
@@ -267,13 +266,20 @@ class LudoEngine {
         if (roll === 6) {
           valid.push(tokenIndex);
         }
-      } else if (step < this.finishStep) {
-        // Token on board or home stretch
-        const newStep = step + roll;
-        if (newStep <= this.finishStep) {
-          if (canPassLastSafe || newStep <= maxStepWithoutKill) {
+      } else if (step >= outerLen) {
+        // Token is inside home stretch
+        if (step + roll <= this.finishStep) {
+          valid.push(tokenIndex);
+        }
+      } else {
+        // Token is on main perimeter track (0..outerLen-1)
+        if (canPassLastSafe) {
+          if (step + roll <= this.finishStep) {
             valid.push(tokenIndex);
           }
+        } else {
+          // Without kill: token loops around main perimeter track! Always valid on board!
+          valid.push(tokenIndex);
         }
       }
     });
@@ -311,10 +317,26 @@ class LudoEngine {
     const oldStep = player.tokens[tokenIndex];
 
     let newStep;
+    const outerLen = this.outerTrackLength || (this.mode === '4P' ? 51 : 71);
+    const canPassLastSafe = !this.customRules.killRequiredToEnterHome || ((player.kills || 0) > 0);
+
     if (oldStep === -1) {
       newStep = 0; // enter track at step 0
-    } else {
+    } else if (oldStep >= outerLen) {
       newStep = oldStep + roll;
+    } else {
+      // Token on main track
+      if (canPassLastSafe) {
+        newStep = oldStep + roll;
+      } else {
+        // Without kill: if step + roll would enter home stretch (>= outerLen), loop around main track!
+        const rawStep = oldStep + roll;
+        if (rawStep >= outerLen) {
+          newStep = rawStep % outerLen;
+        } else {
+          newStep = rawStep;
+        }
+      }
     }
 
     player.tokens[tokenIndex] = newStep;

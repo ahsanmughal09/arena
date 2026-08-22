@@ -41,7 +41,7 @@ function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 
   const step = player.tokens[tokenIndex];
   if (step === undefined) return [];
 
-  const maxStepWithoutKill = 70;
+  const outerLen = 71;
   const canPassLastSafe = !killRequired || ((player.kills || 0) > 0);
 
   const options = [];
@@ -51,12 +51,14 @@ function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 
     let isValid = false;
     if (step === -1) {
       if (roll === 6) isValid = true;
-    } else if (step < finishStep) {
-      const newStep = step + roll;
-      if (newStep <= finishStep) {
-        if (canPassLastSafe || newStep <= maxStepWithoutKill) {
-          isValid = true;
-        }
+    } else if (step >= outerLen) {
+      if (step + roll <= finishStep) isValid = true;
+    } else {
+      if (canPassLastSafe) {
+        if (step + roll <= finishStep) isValid = true;
+      } else {
+        // Without kill: token loops around main perimeter track!
+        isValid = true;
       }
     }
 
@@ -109,12 +111,18 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
       setDisplaySteps(prev => ({ ...prev, [key]: current }));
     }, 0);
 
+    const isLoopAround = (oldStep >= 0 && oldStep < 71 && target < oldStep);
+
     const stepInterval = setInterval(() => {
-      current++;
+      if (isLoopAround) {
+        current = (current + 1) % 71;
+      } else {
+        current++;
+      }
       sounds.playTokenStep();
       setDisplaySteps(prev => ({ ...prev, [key]: current }));
 
-      if (current >= target) {
+      if (current === target) {
         clearInterval(stepInterval);
 
         if (captured) {
