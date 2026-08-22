@@ -112,12 +112,12 @@ export default function DiceRoller({
 
   if (isDualDice) {
     const arr = Array.isArray(currentDice) ? currentDice : [null, null];
-    displayVal1 = showingSixDelay ? (arr[0] === 6 ? 6 : arr[0]) : (canRoll ? null : arr[0]);
-    displayVal2 = showingSixDelay ? (arr[1] === 6 ? 6 : arr[1]) : (canRoll ? null : arr[1]);
+    displayVal1 = (arr[0] !== null && arr[0] !== undefined) ? arr[0] : (dicePool[0] || null);
+    displayVal2 = (arr[1] !== null && arr[1] !== undefined) ? arr[1] : (dicePool[1] || null);
   } else {
-    displayDiceVal = showingSixDelay 
-      ? 6 
-      : (canRoll ? null : (dicePool[selectedRollIndex] || currentDice || null));
+    displayDiceVal = (currentDice !== null && currentDice !== undefined) 
+      ? currentDice 
+      : (dicePool[selectedRollIndex] !== undefined ? dicePool[selectedRollIndex] : (dicePool.length > 0 ? dicePool[0] : null));
   }
 
   const showBalance = dicePool && dicePool.length > 1;
