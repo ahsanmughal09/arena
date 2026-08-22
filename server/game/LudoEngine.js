@@ -48,7 +48,7 @@ class LudoEngine {
     // Teams mapping
     this.teams = this.initTeams();
 
-    // Player states: { [color]: { name, socketId, connected, kills, tokens: [-1, -1, -1, -1] } }
+    // Player states: { [color]: { name, socketId, connected, kills, appealsLeft: 3, tokens: [-1, -1, -1, -1] } }
     this.players = {};
     this.activePlayerIndex = 0;
     this.dicePool = [];
@@ -62,6 +62,21 @@ class LudoEngine {
     this.winner = null;
     this.validMoves = [];
     this.lastAction = null; // { type, color, tokenIndex, rolled, captured }
+
+    // Appeal System State & Snapshots (Entire Turn Rollback)
+    this.turnStartSnapshot = null;
+    this.turnDiceRolls = [];
+    this.preMoveSnapshot = null;
+    this.postMoveSnapshot = null;
+    this.appealState = {
+      inWindow: false,
+      inDemo: false,
+      appealingColor: null,
+      offendingColor: null,
+      windowTimeLeft: 0,
+      demoTimeLeft: 0,
+      demoDicePool: []
+    };
   }
 
   initTeams() {
@@ -105,6 +120,7 @@ class LudoEngine {
       socketId,
       connected: true,
       kills: 0,
+      appealsLeft: 3,
       tokens: [-1, -1, -1, -1] // step index for 4 tokens
     };
     return true;
@@ -144,13 +160,27 @@ class LudoEngine {
     return this.colors[this.activePlayerIndex];
   }
 
+  saveTurnStartSnapshot() {
+    this.turnStartSnapshot = {
+      players: JSON.parse(JSON.stringify(this.players)),
+      activePlayerIndex: this.activePlayerIndex,
+      color: this.getActiveColor()
+    };
+    this.turnDiceRolls = [];
+  }
+
   rollDice() {
     if (!this.gameStarted || this.gameOver || !this.canRoll) return null;
+
+    if (!this.turnStartSnapshot) {
+      this.saveTurnStartSnapshot();
+    }
 
     if (this.customRules.diceCount === 2) {
       const roll1 = Math.floor(Math.random() * 6) + 1;
       const roll2 = Math.floor(Math.random() * 6) + 1;
       this.currentDice = [roll1, roll2];
+      this.turnDiceRolls.push(roll1, roll2);
 
       const isDoubleSix = (roll1 === 6 && roll2 === 6);
 
@@ -193,6 +223,7 @@ class LudoEngine {
     // Standard 1-Dice Roll logic
     const roll = Math.floor(Math.random() * 6) + 1;
     this.currentDice = roll;
+    this.turnDiceRolls.push(roll);
 
     if (roll === 6) {
       this.consecutiveSixes++;
@@ -353,6 +384,7 @@ class LudoEngine {
       newStep = oldStep + roll;
     }
 
+    this.savePreMoveSnapshot();
     player.tokens[tokenIndex] = newStep;
     const oldPos = this.getGlobalPosition(color, oldStep);
     const newPos = this.getGlobalPosition(color, newStep);
@@ -395,31 +427,227 @@ class LudoEngine {
       return { success: true, gameOver: true, winner: this.winner, action: this.lastAction };
     }
 
+    let turnFinished = false;
     // Check remaining dice pool
     if (this.dicePool.length > 0) {
       const hasMoves = this.autoSelectValidRoll();
       if (!hasMoves) {
         // No remaining valid moves for any dice in pool -> clear pool
         this.dicePool = [];
-        if (this.hasExtraTurn) {
-          this.grantExtraTurn();
-        } else {
-          this.nextTurn();
-        }
+        turnFinished = true;
       }
     } else {
-      // Pool empty -> check extra turn or pass turn
-      if (this.hasExtraTurn) {
-        this.grantExtraTurn();
-      } else {
-        this.nextTurn();
-      }
+      turnFinished = true;
     }
 
-    return { success: true, gameOver: false, action: this.lastAction };
+    // Save post-move snapshot for appeal rollback
+    this.savePostMoveSnapshot();
+
+    return { success: true, gameOver: false, turnFinished, action: this.lastAction };
+  }
+
+  finishTurn() {
+    this.turnStartSnapshot = null;
+    this.turnDiceRolls = [];
+    this.appealState.inWindow = false;
+    this.appealState.inDemo = false;
+    if (this.hasExtraTurn) {
+      this.grantExtraTurn();
+    } else {
+      this.nextTurn();
+    }
+  }
+
+  savePreMoveSnapshot() {
+    this.preMoveSnapshot = {
+      players: JSON.parse(JSON.stringify(this.players)),
+      activePlayerIndex: this.activePlayerIndex,
+      dicePool: [...this.dicePool],
+      canRoll: this.canRoll,
+      hasExtraTurn: this.hasExtraTurn,
+      consecutiveSixes: this.consecutiveSixes,
+      color: this.getActiveColor()
+    };
+  }
+
+  savePostMoveSnapshot() {
+    this.postMoveSnapshot = {
+      players: JSON.parse(JSON.stringify(this.players)),
+      activePlayerIndex: this.activePlayerIndex,
+      dicePool: [...this.dicePool],
+      canRoll: this.canRoll,
+      hasExtraTurn: this.hasExtraTurn,
+      consecutiveSixes: this.consecutiveSixes,
+      lastAction: this.lastAction ? { ...this.lastAction } : null
+    };
+  }
+
+  openAppealWindow() {
+    this.appealState = {
+      inWindow: true,
+      inDemo: false,
+      appealingColor: null,
+      offendingColor: this.lastAction?.color || this.getActiveColor(),
+      windowTimeLeft: 5,
+      demoTimeLeft: 10,
+      demoDicePool: []
+    };
+  }
+
+  closeAppealWindow() {
+    this.appealState.inWindow = false;
+    this.turnStartSnapshot = null;
+    this.turnDiceRolls = [];
+  }
+
+  submitAppeal(appealingColor) {
+    if (!this.appealState.inWindow) return { success: false, error: 'Appeal window closed' };
+    const player = this.players[appealingColor];
+    if (!player || (player.appealsLeft || 0) <= 0) {
+      return { success: false, error: 'No appeals remaining' };
+    }
+
+    const offendingColor = this.lastAction?.color || (this.turnStartSnapshot ? this.turnStartSnapshot.color : (this.preMoveSnapshot ? this.preMoveSnapshot.color : null));
+    if (!offendingColor || offendingColor === appealingColor) {
+      return { success: false, error: 'Cannot appeal own move' };
+    }
+
+    // Enter Appeal Demonstration Mode
+    this.appealState.inWindow = false;
+    this.appealState.inDemo = true;
+    this.appealState.appealingColor = appealingColor;
+    this.appealState.offendingColor = offendingColor;
+    this.appealState.demoTimeLeft = 10;
+
+    const demoPool = (this.turnDiceRolls && this.turnDiceRolls.length > 0) 
+      ? [...this.turnDiceRolls] 
+      : (this.preMoveSnapshot ? [...this.preMoveSnapshot.dicePool] : []);
+    this.appealState.demoDicePool = demoPool;
+
+    // Temporarily rollback board to turnStartSnapshot (or preMoveSnapshot) for demonstration
+    if (this.turnStartSnapshot) {
+      this.players = JSON.parse(JSON.stringify(this.turnStartSnapshot.players));
+      this.dicePool = [...demoPool];
+    } else if (this.preMoveSnapshot) {
+      this.players = JSON.parse(JSON.stringify(this.preMoveSnapshot.players));
+      this.dicePool = [...demoPool];
+    }
+
+    return { success: true, appealState: this.appealState };
+  }
+
+  executeDemoMove(appealingColor, tokenIndex, rollIndex = 0) {
+    if (!this.appealState.inDemo || this.appealState.appealingColor !== appealingColor) {
+      return { success: false, error: 'Not in appeal demonstration mode' };
+    }
+
+    const offendingColor = this.appealState.offendingColor;
+    const offendingPlayer = this.players[offendingColor];
+    if (!offendingPlayer) return { success: false, error: 'Offending player missing' };
+
+    const useRollIdx = (rollIndex >= 0 && rollIndex < this.dicePool.length) ? rollIndex : 0;
+    const roll = this.dicePool[useRollIdx];
+    if (!roll) return { success: false, error: 'No remaining dice in demonstration queue' };
+
+    // Splice executed roll from demo pool
+    this.dicePool.splice(useRollIdx, 1);
+    this.appealState.demoDicePool = [...this.dicePool];
+
+    const oldStep = offendingPlayer.tokens[tokenIndex];
+    if (oldStep === undefined) return { success: false, error: 'Invalid token index' };
+
+    let newStep = oldStep === -1 ? 0 : oldStep + roll;
+    offendingPlayer.tokens[tokenIndex] = newStep;
+
+    const newPos = this.getGlobalPosition(offendingColor, newStep);
+    let captured = null;
+    if (newPos.type === 'MAIN' && !this.safeSpots.includes(newPos.step)) {
+      captured = this.checkCapture(offendingColor, newPos.step);
+    }
+
+    const appealingTeam = this.teams[appealingColor];
+    const isTargetTeam = captured && (this.teams[captured.color] === appealingTeam);
+
+    if (captured && isTargetTeam) {
+      // SUCCESSFUL DEMONSTRATION! Missed kill proven!
+      this.appealState.inDemo = false;
+      this.appealState.inWindow = false;
+
+      // Restore board to postMoveSnapshot
+      if (this.postMoveSnapshot) {
+        this.players = JSON.parse(JSON.stringify(this.postMoveSnapshot.players));
+      }
+
+      // Penalize offending player's token (send to home yard -1)
+      if (this.players[offendingColor]) {
+        this.players[offendingColor].tokens[tokenIndex] = -1;
+      }
+
+      // Completely clear turn memory and dice queue
+      this.turnStartSnapshot = null;
+      this.turnDiceRolls = [];
+      this.dicePool = [];
+      this.selectedRollIndex = 0;
+      this.validMoves = [];
+
+      this.savePostMoveSnapshot();
+
+      return {
+        success: true,
+        appealSucceeded: true,
+        offendingColor,
+        offendingTokenIndex: tokenIndex,
+        appealingColor
+      };
+    } else {
+      // If there are still dice left in pool, allow challenger to continue demonstration
+      if (this.dicePool.length > 0) {
+        return {
+          success: true,
+          appealSucceeded: false,
+          continueDemo: true,
+          demoDicePool: this.dicePool
+        };
+      }
+
+      // No dice left & no capture demonstrated -> Appeal Fails
+      return this.failAppeal(appealingColor);
+    }
+  }
+
+  failAppeal(appealingColor) {
+    this.appealState.inDemo = false;
+    this.appealState.inWindow = false;
+
+    // Restore board to postMoveSnapshot
+    if (this.postMoveSnapshot) {
+      this.players = JSON.parse(JSON.stringify(this.postMoveSnapshot.players));
+    }
+
+    // Deduct 1 appeal from challenger
+    if (this.players[appealingColor]) {
+      this.players[appealingColor].appealsLeft = Math.max(0, (this.players[appealingColor].appealsLeft || 3) - 1);
+    }
+
+    // Completely clear turn memory and dice queue
+    this.turnStartSnapshot = null;
+    this.turnDiceRolls = [];
+    this.dicePool = [];
+    this.selectedRollIndex = 0;
+    this.validMoves = [];
+
+    this.savePostMoveSnapshot();
+
+    return {
+      success: true,
+      appealSucceeded: false,
+      appealingColor
+    };
   }
 
   grantExtraTurn() {
+    this.turnStartSnapshot = null;
+    this.turnDiceRolls = [];
     this.hasExtraTurn = false;
     this.dicePool = [];
     this.selectedRollIndex = 0;
@@ -471,6 +699,8 @@ class LudoEngine {
   }
 
   nextTurn() {
+    this.turnStartSnapshot = null;
+    this.turnDiceRolls = [];
     this.dicePool = [];
     this.selectedRollIndex = 0;
     this.canRoll = true;
@@ -513,7 +743,9 @@ class LudoEngine {
       gameOver: this.gameOver,
       winner: this.winner,
       safeSpots: this.safeSpots,
-      lastAction: this.lastAction
+      lastAction: this.lastAction,
+      appealState: this.appealState,
+      finishStep: this.finishStep
     };
   }
 }

@@ -254,10 +254,22 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
   };
 
   const handleTokenClick = (color, tokenIndex, tokCx, tokCy) => {
-    if (!isMyTurn || color !== activeColor || gameState.canRoll) return;
+    let targetColor = activeColor;
+    let isClickable = (isMyTurn && color === activeColor && !gameState.canRoll);
 
-    const player = players[color];
-    const options = getValidRollOptionsForToken(player, tokenIndex, gameState.dicePool, 76, killRequired, gameState, color);
+    if (gameState.appealState && gameState.appealState.inDemo) {
+      if (myColor === gameState.appealState.appealingColor && color === gameState.appealState.offendingColor) {
+        isClickable = true;
+        targetColor = gameState.appealState.offendingColor;
+      }
+    }
+
+    if (!isClickable) return;
+
+    const player = players[targetColor];
+    if (!player) return;
+
+    const options = getValidRollOptionsForToken(player, tokenIndex, gameState.dicePool, 76, killRequired, gameState, targetColor);
 
     if (options.length === 0) return;
 
@@ -436,7 +448,12 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
           const options = (isMyTurn && tok.color === activeColor && !gameState.canRoll)
             ? getValidRollOptionsForToken(player, tok.tIdx, gameState.dicePool, 76, killRequired)
             : [];
-          const isMoveable = options.length > 0;
+          let isMoveable = options.length > 0;
+          if (gameState.appealState && gameState.appealState.inDemo) {
+            if (myColor === gameState.appealState.appealingColor && tok.color === gameState.appealState.offendingColor) {
+              isMoveable = true;
+            }
+          }
           const colorHex = COLOR_HEX_6P[tok.color] || '#FFF';
 
           return (

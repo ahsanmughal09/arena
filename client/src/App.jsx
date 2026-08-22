@@ -9,6 +9,7 @@ import DiceRoller from './components/DiceRoller';
 import PlayerCard from './components/PlayerCard';
 import ChatPanel from './components/ChatPanel';
 import VictoryModal from './components/VictoryModal';
+import AppealOverlay from './components/AppealOverlay';
 
 export default function App() {
   const [view, setView] = useState('home'); // 'home', 'lobby', 'game'
@@ -61,6 +62,43 @@ export default function App() {
       setChatMessages((prev) => [...prev, msg]);
     });
 
+    // Appeal System Listeners
+    socket.on('APPEAL_WINDOW_STARTED', ({ state }) => {
+      setGameState(state);
+    });
+
+    socket.on('APPEAL_WINDOW_CLOSED', ({ state }) => {
+      setGameState(state);
+    });
+
+    socket.on('APPEAL_STARTED', ({ state }) => {
+      sounds.playClick();
+      setGameState(state);
+    });
+
+    socket.on('APPEAL_RESOLVED', ({ success, state }) => {
+      if (success) {
+        sounds.playCapture();
+      } else {
+        sounds.playClick();
+      }
+      setGameState(state);
+    });
+
+    socket.on('APPEAL_TICK', ({ windowTimeLeft }) => {
+      setGameState(prev => prev ? {
+        ...prev,
+        appealState: { ...(prev.appealState || {}), windowTimeLeft }
+      } : prev);
+    });
+
+    socket.on('APPEAL_DEMO_TICK', ({ demoTimeLeft }) => {
+      setGameState(prev => prev ? {
+        ...prev,
+        appealState: { ...(prev.appealState || {}), demoTimeLeft }
+      } : prev);
+    });
+
     return () => {
       socket.off('ROOM_UPDATED');
       socket.off('GAME_STARTED');
@@ -69,6 +107,12 @@ export default function App() {
       socket.off('GAME_STATE_UPDATE');
       socket.off('TIMER_TICK');
       socket.off('CHAT_MESSAGE');
+      socket.off('APPEAL_WINDOW_STARTED');
+      socket.off('APPEAL_WINDOW_CLOSED');
+      socket.off('APPEAL_STARTED');
+      socket.off('APPEAL_RESOLVED');
+      socket.off('APPEAL_TICK');
+      socket.off('APPEAL_DEMO_TICK');
     };
   }, [myColor]);
 
@@ -111,24 +155,24 @@ export default function App() {
         setSlots(res.slots);
         setSettings(res.settings);
         setGameState(res.state);
-        setView('lobby');
         sessionStorage.setItem('ludo_session', JSON.stringify({ roomCode: res.roomCode, color: res.color, name }));
+        setView('lobby');
       } else {
         alert(res.error || 'Failed to create room.');
       }
     });
   };
 
-  const handleJoinRoom = ({ name, roomCode: code }) => {
-    socket.emit('JOIN_ROOM', { name, roomCode: code }, (res) => {
+  const handleJoinRoom = ({ roomCode: joinCode, name }) => {
+    socket.emit('JOIN_ROOM', { roomCode: joinCode, name }, (res) => {
       if (res.success) {
         setRoomCode(res.roomCode);
         setMyColor(res.color);
         setSlots(res.slots);
         setSettings(res.settings);
         setGameState(res.state);
-        setView('lobby');
         sessionStorage.setItem('ludo_session', JSON.stringify({ roomCode: res.roomCode, color: res.color, name }));
+        setView('lobby');
       } else {
         alert(res.error || 'Failed to join room.');
       }
@@ -152,8 +196,17 @@ export default function App() {
   };
 
   const handleMoveToken = (tokenIndex, explicitRollIndex = null) => {
+    if (gameState && gameState.appealState && gameState.appealState.inDemo) {
+      const rIdx = (explicitRollIndex !== null && explicitRollIndex !== undefined) ? explicitRollIndex : 0;
+      socket.emit('DEMO_MOVE_TOKEN', { roomCode, tokenIndex, rollIndex: rIdx });
+      return;
+    }
     const rIdx = explicitRollIndex !== null ? explicitRollIndex : (gameState?.selectedRollIndex || 0);
     socket.emit('MOVE_TOKEN', { roomCode, tokenIndex, rollIndex: rIdx });
+  };
+
+  const handleSubmitAppeal = () => {
+    socket.emit('SUBMIT_APPEAL', { roomCode });
   };
 
   const handlePlayAgain = () => {
@@ -206,7 +259,16 @@ export default function App() {
 
       {/* Active Game View */}
       {view === 'game' && gameState && (
-        <div style={{ height: '100vh', maxHeight: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '6px 12px', boxSizing: 'border-box', gap: '8px' }}>
+        <div style={{ position: 'relative', height: '100vh', maxHeight: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '6px 12px', boxSizing: 'border-box', gap: '8px' }}>
+          
+          {/* Appeal System Overlay (5s Window & 10s Demo Mode) */}
+          <AppealOverlay 
+            appealState={gameState.appealState}
+            myColor={myColor}
+            activeColor={gameState.activeColor}
+            playerAppealsLeft={gameState.players[myColor]?.appealsLeft ?? 3}
+            onSubmitAppeal={handleSubmitAppeal}
+          />
           
           {/* Top Bar / Header */}
           <div className="glass-panel" style={{ padding: '6px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>

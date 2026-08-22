@@ -194,6 +194,119 @@ io.on('connection', (socket) => {
         moveRes,
         state: room.engine.getGameState()
       });
+
+      // Open 5-second Appeal Window ONLY when the turn is finished and game is not over
+      if (moveRes.turnFinished && !moveRes.gameOver) {
+        room.engine.openAppealWindow();
+        io.to(roomCode).emit('APPEAL_WINDOW_STARTED', {
+          windowTimeLeft: 5,
+          offendingColor: info.color,
+          state: room.engine.getGameState()
+        });
+
+        if (room.appealWindowTimer) clearInterval(room.appealWindowTimer);
+        let windowSeconds = 5;
+        room.appealWindowTimer = setInterval(() => {
+          windowSeconds--;
+          if (room.engine.appealState) {
+            room.engine.appealState.windowTimeLeft = windowSeconds;
+          }
+
+          if (windowSeconds <= 0) {
+            clearInterval(room.appealWindowTimer);
+            room.appealWindowTimer = null;
+            if (room.engine.appealState.inWindow) {
+              room.engine.finishTurn();
+              roomManager.resetTimer(room);
+              io.to(roomCode).emit('APPEAL_WINDOW_CLOSED', { state: room.engine.getGameState() });
+            }
+          } else {
+            io.to(roomCode).emit('APPEAL_TICK', { windowTimeLeft: windowSeconds });
+          }
+        }, 1000);
+      }
+    }
+  });
+
+  // Submit Appeal
+  socket.on('SUBMIT_APPEAL', ({ roomCode }) => {
+    const room = roomManager.rooms.get(roomCode);
+    if (!room || !room.engine.gameStarted) return;
+
+    const info = roomManager.socketToRoom.get(socket.id);
+    if (!info) return;
+
+    if (room.appealWindowTimer) {
+      clearInterval(room.appealWindowTimer);
+      room.appealWindowTimer = null;
+    }
+
+    const appealRes = room.engine.submitAppeal(info.color);
+    if (appealRes && appealRes.success) {
+      io.to(roomCode).emit('APPEAL_STARTED', {
+        appealingColor: info.color,
+        offendingColor: room.engine.appealState.offendingColor,
+        demoTimeLeft: 10,
+        state: room.engine.getGameState()
+      });
+
+      if (room.appealDemoTimer) clearInterval(room.appealDemoTimer);
+      let demoSeconds = 10;
+      room.appealDemoTimer = setInterval(() => {
+        demoSeconds--;
+        if (room.engine.appealState) {
+          room.engine.appealState.demoTimeLeft = demoSeconds;
+        }
+
+        if (demoSeconds <= 0) {
+          clearInterval(room.appealDemoTimer);
+          room.appealDemoTimer = null;
+
+          if (room.engine.appealState.inDemo) {
+            const failRes = room.engine.failAppeal(info.color);
+            room.engine.finishTurn();
+            roomManager.resetTimer(room);
+            io.to(roomCode).emit('APPEAL_RESOLVED', {
+              success: false,
+              appealingColor: info.color,
+              state: room.engine.getGameState()
+            });
+          }
+        } else {
+          io.to(roomCode).emit('APPEAL_DEMO_TICK', { demoTimeLeft: demoSeconds });
+        }
+      }, 1000);
+    }
+  });
+
+  // Execute Demonstration Move during Appeal Mode
+  socket.on('DEMO_MOVE_TOKEN', ({ roomCode, tokenIndex, rollIndex }) => {
+    const room = roomManager.rooms.get(roomCode);
+    if (!room || !room.engine.gameStarted) return;
+
+    const info = roomManager.socketToRoom.get(socket.id);
+    if (!info) return;
+
+    const demoRes = room.engine.executeDemoMove(info.color, tokenIndex, rollIndex);
+    if (demoRes && demoRes.success) {
+      if (!demoRes.continueDemo) {
+        if (room.appealDemoTimer) {
+          clearInterval(room.appealDemoTimer);
+          room.appealDemoTimer = null;
+        }
+
+        room.engine.finishTurn();
+        roomManager.resetTimer(room);
+        io.to(roomCode).emit('APPEAL_RESOLVED', {
+          success: demoRes.appealSucceeded,
+          offendingColor: demoRes.offendingColor,
+          offendingTokenIndex: demoRes.offendingTokenIndex,
+          appealingColor: info.color,
+          state: room.engine.getGameState()
+        });
+      } else {
+        io.to(roomCode).emit('GAME_STATE_UPDATE', { state: room.engine.getGameState() });
+      }
     }
   });
 

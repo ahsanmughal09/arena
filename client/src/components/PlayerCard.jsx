@@ -74,6 +74,9 @@ export default function PlayerCard({ color, player, isActive, isMe, teamName, fi
             <span style={{ fontSize: '0.75rem', color: (player.kills || 0) > 0 ? '#2ED573' : '#FF6B81', fontWeight: 600 }}>
               🎯 {player.kills || 0} Kills
             </span>
+            <span style={{ fontSize: '0.75rem', color: '#F59E0B', fontWeight: 600 }}>
+              ⚖️ {player.appealsLeft !== undefined ? player.appealsLeft : 3}
+            </span>
           </div>
         </div>
       </div>
