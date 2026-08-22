@@ -63,9 +63,13 @@ class LudoEngine {
     this.validMoves = [];
     this.lastAction = null; // { type, color, tokenIndex, rolled, captured }
 
-    // Appeal System State & Snapshots (Entire Turn Rollback)
+    // Appeal System State & Snapshots (Zero-Wait Turn Rollback)
     this.turnStartSnapshot = null;
     this.turnDiceRolls = [];
+    this.lastTurnSnapshot = null;
+    this.lastTurnDiceRolls = [];
+    this.lastTurnOffendingColor = null;
+    this.canAppealLastTurn = false;
     this.preMoveSnapshot = null;
     this.postMoveSnapshot = null;
     this.appealState = {
@@ -94,14 +98,11 @@ class LudoEngine {
       if (this.teamMode === '3v3') {
         teams.red = 'Team Alpha';
         teams.yellow = 'Team Alpha';
-        teams.orange = 'Team Alpha';
+        teams.blue = 'Team Alpha';
         teams.green = 'Team Beta';
-        teams.blue = 'Team Beta';
         teams.purple = 'Team Beta';
+        teams.orange = 'Team Beta';
       } else if (this.teamMode === '2v2v2') {
-        teams.red = 'Team Red-Blue';
-        teams.blue = 'Team Red-Blue';
-        teams.green = 'Team Green-Orange';
         teams.orange = 'Team Green-Orange';
         teams.yellow = 'Team Yellow-Purple';
         teams.purple = 'Team Yellow-Purple';
@@ -167,6 +168,7 @@ class LudoEngine {
       color: this.getActiveColor()
     };
     this.turnDiceRolls = [];
+    this.hasExtraTurn = false;
   }
 
   rollDice() {
@@ -440,6 +442,16 @@ class LudoEngine {
       turnFinished = true;
     }
 
+    if (turnFinished) {
+      if (this.turnStartSnapshot) {
+        this.lastTurnSnapshot = this.turnStartSnapshot;
+        this.lastTurnDiceRolls = [...this.turnDiceRolls];
+        this.lastTurnOffendingColor = color;
+        this.canAppealLastTurn = true;
+      }
+      this.finishTurn();
+    }
+
     // Save post-move snapshot for appeal rollback
     this.savePostMoveSnapshot();
 
@@ -501,37 +513,33 @@ class LudoEngine {
   }
 
   submitAppeal(appealingColor) {
-    if (!this.appealState.inWindow) return { success: false, error: 'Appeal window closed' };
+    if (!this.canAppealLastTurn || !this.lastTurnSnapshot) {
+      return { success: false, error: 'No turn available to appeal' };
+    }
     const player = this.players[appealingColor];
     if (!player || (player.appealsLeft || 0) <= 0) {
       return { success: false, error: 'No appeals remaining' };
     }
 
-    const offendingColor = this.lastAction?.color || (this.turnStartSnapshot ? this.turnStartSnapshot.color : (this.preMoveSnapshot ? this.preMoveSnapshot.color : null));
+    const offendingColor = this.lastTurnOffendingColor;
     if (!offendingColor || offendingColor === appealingColor) {
-      return { success: false, error: 'Cannot appeal own move' };
+      return { success: false, error: 'Cannot appeal own turn' };
     }
 
     // Enter Appeal Demonstration Mode
+    this.canAppealLastTurn = false;
     this.appealState.inWindow = false;
     this.appealState.inDemo = true;
     this.appealState.appealingColor = appealingColor;
     this.appealState.offendingColor = offendingColor;
     this.appealState.demoTimeLeft = 10;
 
-    const demoPool = (this.turnDiceRolls && this.turnDiceRolls.length > 0) 
-      ? [...this.turnDiceRolls] 
-      : (this.preMoveSnapshot ? [...this.preMoveSnapshot.dicePool] : []);
+    const demoPool = [...this.lastTurnDiceRolls];
     this.appealState.demoDicePool = demoPool;
 
-    // Temporarily rollback board to turnStartSnapshot (or preMoveSnapshot) for demonstration
-    if (this.turnStartSnapshot) {
-      this.players = JSON.parse(JSON.stringify(this.turnStartSnapshot.players));
-      this.dicePool = [...demoPool];
-    } else if (this.preMoveSnapshot) {
-      this.players = JSON.parse(JSON.stringify(this.preMoveSnapshot.players));
-      this.dicePool = [...demoPool];
-    }
+    // Temporarily rollback board to start of offending player's turn for demonstration
+    this.players = JSON.parse(JSON.stringify(this.lastTurnSnapshot.players));
+    this.dicePool = [...demoPool];
 
     return { success: true, appealState: this.appealState };
   }
@@ -714,7 +722,7 @@ class LudoEngine {
     while (attempts < this.colors.length) {
       const nextColor = this.colors[nextIdx];
       const p = this.players[nextColor];
-      if (p && p.connected && !p.tokens.every(s => s === this.finishStep)) {
+      if (p && !p.tokens.every(s => s === this.finishStep)) {
         this.activePlayerIndex = nextIdx;
         return;
       }
@@ -745,7 +753,9 @@ class LudoEngine {
       safeSpots: this.safeSpots,
       lastAction: this.lastAction,
       appealState: this.appealState,
-      finishStep: this.finishStep
+      finishStep: this.finishStep,
+      canAppealLastTurn: this.canAppealLastTurn,
+      lastTurnOffendingColor: this.lastTurnOffendingColor
     };
   }
 }

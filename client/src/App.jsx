@@ -261,11 +261,12 @@ export default function App() {
       {view === 'game' && gameState && (
         <div style={{ position: 'relative', height: '100vh', maxHeight: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '6px 12px', boxSizing: 'border-box', gap: '8px' }}>
           
-          {/* Appeal System Overlay (5s Window & 10s Demo Mode) */}
+          {/* Appeal System Overlay (Zero-Wait Turn Rollback & 10s Demo Mode) */}
           <AppealOverlay 
             appealState={gameState.appealState}
+            canAppealLastTurn={gameState.canAppealLastTurn}
+            lastTurnOffendingColor={gameState.lastTurnOffendingColor}
             myColor={myColor}
-            activeColor={gameState.activeColor}
             playerAppealsLeft={gameState.players[myColor]?.appealsLeft ?? 3}
             onSubmitAppeal={handleSubmitAppeal}
           />

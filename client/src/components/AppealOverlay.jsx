@@ -2,23 +2,23 @@ import React from 'react';
 
 export default function AppealOverlay({ 
   appealState, 
+  canAppealLastTurn,
+  lastTurnOffendingColor,
   myColor, 
   playerAppealsLeft, 
   onSubmitAppeal 
 }) {
-  if (!appealState) return null;
+  const inDemo = appealState?.inDemo;
 
-  const { inWindow, inDemo, appealingColor, offendingColor, windowTimeLeft, demoTimeLeft } = appealState;
-
-  // 1. Appeal Window (5 seconds after a move)
-  if (inWindow) {
-    const isOffender = myColor === offendingColor;
+  // 1. Non-Blocking Floating Appeal Button (Active until next player rolls dice)
+  if (!inDemo && canAppealLastTurn) {
+    const isOffender = myColor === lastTurnOffendingColor;
     const canAppeal = !isOffender && (playerAppealsLeft > 0);
 
     return (
       <div style={{
         position: 'absolute',
-        top: '20px',
+        top: '15px',
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 1000,
@@ -42,9 +42,9 @@ export default function AppealOverlay({
           gap: '12px'
         }}>
           <span style={{ fontSize: '18px' }}>⚖️</span>
-          <span>Appeal Window ({windowTimeLeft || 5}s)</span>
+          <span>{isOffender ? `Your Turn (${lastTurnOffendingColor?.toUpperCase()}) Is Appealable` : 'Missed Kill Opportunity?'}</span>
 
-          {canAppeal && (
+          {canAppeal ? (
             <button
               onClick={onSubmitAppeal}
               style={{
@@ -62,9 +62,13 @@ export default function AppealOverlay({
               onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
               onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
             >
-              Appeal Missed Kill (⚖️ {playerAppealsLeft} Left)
+              Appeal Turn (⚖️ {playerAppealsLeft} Left)
             </button>
-          )}
+          ) : isOffender ? (
+            <span style={{ fontSize: '11px', color: '#CBD5E1', fontWeight: 600, background: 'rgba(255,255,255,0.1)', padding: '4px 10px', borderRadius: '8px' }}>
+              Opponents may appeal until next roll
+            </span>
+          ) : null}
         </div>
       </div>
     );

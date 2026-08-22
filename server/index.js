@@ -164,11 +164,11 @@ io.on('connection', (socket) => {
         state: room.engine.getGameState()
       });
 
-      // If rolling phase is done (canRoll === false) and NO valid moves exist for any roll in pool
-      if (!rollRes.canRoll && rollRes.validMoves.length === 0) {
+      // If rolling phase is done (canRoll === false), NOT a penalty, and NO valid moves exist for any roll in pool
+      if (!rollRes.penalty && !rollRes.canRoll && rollRes.validMoves.length === 0) {
         setTimeout(() => {
           if (!room.engine.gameOver) {
-            room.engine.nextTurn();
+            room.engine.finishTurn();
             roomManager.resetTimer(room);
             io.to(roomCode).emit('GAME_STATE_UPDATE', { state: room.engine.getGameState() });
           }
@@ -195,36 +195,7 @@ io.on('connection', (socket) => {
         state: room.engine.getGameState()
       });
 
-      // Open 5-second Appeal Window ONLY when the turn is finished and game is not over
-      if (moveRes.turnFinished && !moveRes.gameOver) {
-        room.engine.openAppealWindow();
-        io.to(roomCode).emit('APPEAL_WINDOW_STARTED', {
-          windowTimeLeft: 5,
-          offendingColor: info.color,
-          state: room.engine.getGameState()
-        });
-
-        if (room.appealWindowTimer) clearInterval(room.appealWindowTimer);
-        let windowSeconds = 5;
-        room.appealWindowTimer = setInterval(() => {
-          windowSeconds--;
-          if (room.engine.appealState) {
-            room.engine.appealState.windowTimeLeft = windowSeconds;
-          }
-
-          if (windowSeconds <= 0) {
-            clearInterval(room.appealWindowTimer);
-            room.appealWindowTimer = null;
-            if (room.engine.appealState.inWindow) {
-              room.engine.finishTurn();
-              roomManager.resetTimer(room);
-              io.to(roomCode).emit('APPEAL_WINDOW_CLOSED', { state: room.engine.getGameState() });
-            }
-          } else {
-            io.to(roomCode).emit('APPEAL_TICK', { windowTimeLeft: windowSeconds });
-          }
-        }, 1000);
-      }
+      // Broadcast TOKEN_MOVED and updated game state (zero-wait non-blocking turn transition)
     }
   });
 
