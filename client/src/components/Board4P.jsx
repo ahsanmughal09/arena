@@ -78,13 +78,14 @@ function getOccupantOffset(occupantIndex, totalOccupants) {
   return { ...offsets[occupantIndex % 4], r: 8.5 };
 }
 
-function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 57, killRequired = false) {
+function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 56, killRequired = false, gameState = null, color = null) {
   if (!player || !player.tokens || !dicePool || dicePool.length === 0) return [];
   const step = player.tokens[tokenIndex];
   if (step === undefined) return [];
 
-  const outerLen = 52;
-  const canPassLastSafe = !killRequired || ((player.kills || 0) > 0);
+  const outerLen = 51;
+  const lastSafeStep = 47;
+  const hasKill = ((player.kills || 0) > 0);
 
   const options = [];
   const seenValues = new Set();
@@ -96,11 +97,39 @@ function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 
     } else if (step >= outerLen) {
       if (step + roll <= finishStep) isValid = true;
     } else {
-      if (canPassLastSafe) {
-        if (step + roll <= finishStep) isValid = true;
+      const targetStep = step + roll;
+      if (!killRequired || hasKill) {
+        if (targetStep <= finishStep) isValid = true;
       } else {
-        // Without kill: token loops around main perimeter track!
-        isValid = true;
+        if (targetStep <= lastSafeStep) {
+          isValid = true;
+        } else if (targetStep < outerLen) {
+          // Check if landing on opponent token to kill it!
+          if (gameState && gameState.players && color) {
+            const startPos = color === 'red' ? 0 : color === 'green' ? 13 : color === 'yellow' ? 26 : 39;
+            const targetAbs = (startPos + targetStep) % 52;
+            const safeSpots = [0, 8, 13, 21, 26, 34, 39, 47];
+
+            if (!safeSpots.includes(targetAbs)) {
+              let hasOpponent = false;
+              Object.keys(gameState.players).forEach(otherColor => {
+                if (otherColor !== color) {
+                  const otherPlayer = gameState.players[otherColor];
+                  if (otherPlayer && otherPlayer.tokens) {
+                    const otherStart = otherColor === 'red' ? 0 : otherColor === 'green' ? 13 : otherColor === 'yellow' ? 26 : 39;
+                    otherPlayer.tokens.forEach(otherStep => {
+                      if (otherStep >= 0 && otherStep < 51) {
+                        const otherAbs = (otherStart + otherStep) % 52;
+                        if (otherAbs === targetAbs) hasOpponent = true;
+                      }
+                    });
+                  }
+                }
+              });
+              if (hasOpponent) isValid = true;
+            }
+          }
+        }
       }
     }
 
@@ -153,11 +182,11 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
       setDisplaySteps(prev => ({ ...prev, [key]: current }));
     }, 0);
 
-    const isLoopAround = (oldStep >= 0 && oldStep < 52 && target < oldStep);
+    const isLoopAround = (oldStep >= 0 && oldStep < 51 && target < oldStep);
 
     const stepInterval = setInterval(() => {
       if (isLoopAround) {
-        current = (current + 1) % 52;
+        current = (current + 1) % 51;
       } else {
         current++;
       }
@@ -220,7 +249,7 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
     if (!isMyTurn || color !== activeColor || gameState.canRoll) return;
 
     const player = players[color];
-    const options = getValidRollOptionsForToken(player, tokenIndex, gameState.dicePool, 57, killRequired);
+    const options = getValidRollOptionsForToken(player, tokenIndex, gameState.dicePool, 56, killRequired, gameState, color);
 
     if (options.length === 0) return;
 
@@ -270,7 +299,7 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
           baseCx = spot.c * cs + cs / 2;
           baseCy = spot.r * cs + cs / 2;
           key = `yard-${color}-${tIdx}`;
-        } else if (stepToRender < 52) {
+        } else if (stepToRender < 51) {
           const startPos = color === 'red' ? 0 : color === 'green' ? 13 : color === 'yellow' ? 26 : 39;
           const absIndex = (startPos + stepToRender) % 52;
           const cell = MAIN_TRACK_4P[absIndex] || MAIN_TRACK_4P[0];
@@ -278,7 +307,7 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
           baseCy = cell.r * cs + cs / 2;
           key = `main-${absIndex}`;
         } else {
-          const homeStep = stepToRender - 52;
+          const homeStep = stepToRender - 51;
           const path = HOME_PATHS_4P[color] || HOME_PATHS_4P.red;
           const cell = path[Math.min(homeStep, 5)] || path[5];
           baseCx = cell.c * cs + cs / 2;
