@@ -23,9 +23,9 @@ class LudoEngine {
 
     this.colors = mode === '4P' ? PLAYER_COLORS_4P : PLAYER_COLORS_6P;
     this.trackLength = mode === '4P' ? 52 : 72;
-    this.outerTrackLength = mode === '4P' ? 52 : 72;
+    this.outerTrackLength = mode === '4P' ? 51 : 71;
     this.homeLength = 6;
-    this.finishStep = mode === '4P' ? 57 : 77; // -1: yard, 0..outerTrackLength-1: main, outerTrackLength..finishStep: home stretch (57/77 is finished)
+    this.finishStep = mode === '4P' ? 56 : 76; // -1: yard, 0..outerTrackLength-1: main, outerTrackLength..finishStep: home stretch (56/76 is finished)
     
     this.startPositions = mode === '4P' ? {
       red: 0,
