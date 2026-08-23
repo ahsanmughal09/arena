@@ -6,7 +6,6 @@ import GameLobby from './components/GameLobby';
 import Board4P from './components/Board4P';
 import Board6P from './components/Board6P';
 import DiceRoller from './components/DiceRoller';
-import PlayerCard from './components/PlayerCard';
 import ChatPanel from './components/ChatPanel';
 import VictoryModal from './components/VictoryModal';
 import AppealOverlay from './components/AppealOverlay';
@@ -19,7 +18,7 @@ export default function App() {
   const [settings, setSettings] = useState({ mode: '4P', teamMode: 'solo', turnTimer: 30 });
   const [gameState, setGameState] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
-  const [timeLeft, setTimeLeft] = useState(30);
+  const [, setTimeLeft] = useState(30);
 
   useEffect(() => {
     // Socket Event Listeners
@@ -319,28 +318,10 @@ export default function App() {
             </div>
           </div>
 
-          {/* Main Game Layout (No Scroll Fit Grid) */}
-          <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr 220px', gap: '10px', flex: 1, minHeight: 0, alignItems: 'center' }}>
+          {/* Main Game Layout (Zero Scroll 2-Column Board & Controls Layout) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 240px', gap: '14px', flex: 1, minHeight: 0, alignItems: 'center' }}>
             
-            {/* Left Column: Player Cards */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '100%', overflowY: 'auto' }}>
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#94A3B8', marginBottom: '2px' }}>Players & Teams</h3>
-              {gameState.colors.map(color => (
-                <PlayerCard 
-                  key={`card-${color}`}
-                  color={color}
-                  player={gameState.players[color]}
-                  isActive={gameState.activeColor === color}
-                  isMe={color === myColor}
-                  teamName={gameState.teams[color]}
-                  finishStep={gameState.finishStep}
-                  timeLeft={timeLeft}
-                  turnTimer={gameState.turnTimer}
-                />
-              ))}
-            </div>
-
-            {/* Middle Column: Interactive Board */}
+            {/* Left Column: Interactive Board with Integrated Yard Participant Info */}
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: 0 }}>
               {gameState.mode === '4P' ? (
                 <Board4P gameState={gameState} myColor={myColor} onMoveToken={handleMoveToken} />

@@ -20,18 +20,18 @@ const MAIN_TRACK_4P = [
 
 // Home paths for each color (steps 52..57)
 const HOME_PATHS_4P = {
-  red:    [{ c: 1, r: 7 }, { c: 2, r: 7 }, { c: 3, r: 7 }, { c: 4, r: 7 }, { c: 5, r: 7 }, { c: 6, r: 7 }],
-  green:  [{ c: 7, r: 1 }, { c: 7, r: 2 }, { c: 7, r: 3 }, { c: 7, r: 4 }, { c: 7, r: 5 }, { c: 7, r: 6 }],
+  red: [{ c: 1, r: 7 }, { c: 2, r: 7 }, { c: 3, r: 7 }, { c: 4, r: 7 }, { c: 5, r: 7 }, { c: 6, r: 7 }],
+  green: [{ c: 7, r: 1 }, { c: 7, r: 2 }, { c: 7, r: 3 }, { c: 7, r: 4 }, { c: 7, r: 5 }, { c: 7, r: 6 }],
   yellow: [{ c: 13, r: 7 }, { c: 12, r: 7 }, { c: 11, r: 7 }, { c: 10, r: 7 }, { c: 9, r: 7 }, { c: 8, r: 7 }],
-  blue:   [{ c: 7, r: 13 }, { c: 7, r: 12 }, { c: 7, r: 11 }, { c: 7, r: 10 }, { c: 7, r: 9 }, { c: 7, r: 8 }]
+  blue: [{ c: 7, r: 13 }, { c: 7, r: 12 }, { c: 7, r: 11 }, { c: 7, r: 10 }, { c: 7, r: 9 }, { c: 7, r: 8 }]
 };
 
 // Yard token display coords (col, row)
 const YARD_SPOTS_4P = {
-  red:    [{ c: 1, r: 1 }, { c: 3, r: 1 }, { c: 1, r: 3 }, { c: 3, r: 3 }],
-  green:  [{ c: 10, r: 1 }, { c: 12, r: 1 }, { c: 10, r: 3 }, { c: 12, r: 3 }],
-  yellow: [{ c: 10, r: 10 }, { c: 12, r: 10 }, { c: 10, r: 12 }, { c: 12, r: 12 }],
-  blue:   [{ c: 1, r: 10 }, { c: 3, r: 10 }, { c: 1, r: 12 }, { c: 3, r: 12 }]
+  red: [{ c: 0.8, r: 0.8 }, { c: 4.2, r: 0.8 }, { c: 0.8, r: 4.2 }, { c: 4.2, r: 4.2 }],
+  green: [{ c: 9.8, r: 0.8 }, { c: 13.2, r: 0.8 }, { c: 9.8, r: 4.2 }, { c: 13.2, r: 4.2 }],
+  yellow: [{ c: 9.8, r: 9.8 }, { c: 13.2, r: 9.8 }, { c: 9.8, r: 13.2 }, { c: 13.2, r: 13.2 }],
+  blue: [{ c: 0.8, r: 9.8 }, { c: 4.2, r: 9.8 }, { c: 0.8, r: 13.2 }, { c: 4.2, r: 13.2 }]
 };
 
 // Safe star spots indices on main track (0..51)
@@ -52,6 +52,108 @@ const COLOR_HEX_4P = {
   yellow: '#FFA502',
   blue: '#1E90FF'
 };
+
+function YardPlayerCard({ color, player, isActive, isMe, teamName, finishStep }) {
+  if (!player) {
+    return (
+      <div style={{
+        background: 'rgba(15, 23, 42, 0.85)',
+        borderRadius: '12px',
+        border: '1px dashed rgba(255,255,255,0.2)',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#64748B',
+        fontSize: '10px',
+        fontWeight: 600
+      }}>
+        Empty Slot
+      </div>
+    );
+  }
+
+  const finishedCount = player.tokens ? player.tokens.filter(s => s === finishStep).length : 0;
+  const isWinner = finishedCount === 4;
+
+  return (
+    <div style={{
+      background: isActive
+        ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98))'
+        : 'rgba(15, 23, 42, 0.88)',
+      borderRadius: '14px',
+      border: isActive ? `2px solid ${COLOR_HEX_4P[color] || '#6366F1'}` : '1.5px solid rgba(255, 255, 255, 0.25)',
+      boxShadow: isActive ? `0 0 20px ${COLOR_HEX_4P[color]}A0` : '0 6px 16px rgba(0, 0, 0, 0.6)',
+      padding: '6px 10px',
+      color: '#FFF',
+      height: '100%',
+      boxSizing: 'border-box',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      gap: '3px',
+      fontSize: '10px',
+      userSelect: 'none'
+    }}>
+      {/* Top Row: Online Dot + Player Name + Turn Badge */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0 }}>
+          <div style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: player.connected ? '#2ED573' : '#64748B',
+            boxShadow: player.connected ? '0 0 6px #2ED573' : 'none',
+            flexShrink: 0
+          }} />
+          <span style={{
+            fontWeight: 800,
+            fontSize: '12px',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            color: isActive ? COLOR_HEX_4P[color] : '#F8FAFC'
+          }}>
+            {player.name} {isMe ? '(You)' : ''}
+          </span>
+        </div>
+        {isActive && (
+          <span style={{
+            background: COLOR_HEX_4P[color],
+            color: '#0F172A',
+            fontSize: '8px',
+            fontWeight: 900,
+            padding: '1px 5px',
+            borderRadius: '5px',
+            textTransform: 'uppercase',
+            flexShrink: 0
+          }}>
+            TURN
+          </span>
+        )}
+      </div>
+
+      {/* Middle Row: Team Name & Winner Status */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '9px', color: '#94A3B8' }}>
+        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{teamName || color.toUpperCase()}</span>
+        {isWinner && <span style={{ color: '#F59E0B', fontWeight: 800 }}>🏆 WINNER</span>}
+      </div>
+
+      {/* Bottom Row: Kills, Home, Appeals Badges */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '2px', paddingTop: '3px', borderTop: '1px solid rgba(255,255,255,0.15)' }}>
+        <span title="Kills" style={{ fontSize: '10px', color: '#EF4444', fontWeight: 700 }}>
+          ⚔️ {player.kills || 0}
+        </span>
+        <span title="Tokens in Home" style={{ fontSize: '10px', color: '#10B981', fontWeight: 700 }}>
+          🏠 {finishedCount}/4
+        </span>
+        <span title="Appeals Remaining" style={{ fontSize: '10px', color: '#F59E0B', fontWeight: 700 }}>
+          ⚖️ {player.appealsLeft ?? 3}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 function getOccupantOffset(occupantIndex, totalOccupants) {
   if (totalOccupants <= 1) {
@@ -200,7 +302,7 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
           sounds.playCapture();
           const capKey = `${captured.color}-${captured.tokenIndex}`;
           let capStep = (captured.oldStep !== undefined && captured.oldStep >= 0) ? captured.oldStep : target;
-          
+
           setDisplaySteps(prev => ({ ...prev, [capKey]: capStep }));
 
           const capInterval = setInterval(() => {
@@ -292,11 +394,11 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
 
       player.tokens.forEach((step, tIdx) => {
         const tokenKey = `${color}-${tIdx}`;
-        const stepToRender = displaySteps[tokenKey] !== undefined 
-          ? displaySteps[tokenKey] 
-          : (capturedLocks[tokenKey] !== undefined 
-              ? capturedLocks[tokenKey] 
-              : step);
+        const stepToRender = displaySteps[tokenKey] !== undefined
+          ? displaySteps[tokenKey]
+          : (capturedLocks[tokenKey] !== undefined
+            ? capturedLocks[tokenKey]
+            : step);
 
         let key;
         let baseCx = 300;
@@ -346,7 +448,7 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
   }
 
   return (
-    <div 
+    <div
       onClick={() => setActivePopup(null)}
       style={{
         position: 'relative',
@@ -360,19 +462,19 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
         margin: '0 auto'
       }}
     >
-      <svg 
-        viewBox="0 0 600 600" 
-        style={{ 
-          width: '100%', 
-          height: '100%', 
-          maxHeight: 'calc(100vh - 65px)', 
-          borderRadius: '20px', 
-          background: 'radial-gradient(circle at center, #1E293B 0%, #0F172A 100%)', 
+      <svg
+        viewBox="0 0 600 600"
+        style={{
+          width: '100%',
+          height: '100%',
+          maxHeight: 'calc(100vh - 65px)',
+          borderRadius: '20px',
+          background: 'radial-gradient(circle at center, #1E293B 0%, #0F172A 100%)',
           border: '2px solid rgba(99, 102, 241, 0.4)',
-          boxShadow: '0 20px 50px rgba(0,0,0,0.6), inset 0 0 30px rgba(99, 102, 241, 0.15)' 
+          boxShadow: '0 20px 50px rgba(0,0,0,0.6), inset 0 0 30px rgba(99, 102, 241, 0.15)'
         }}
       >
-        
+
         {/* Background Grid Cells */}
         <defs>
           <radialGradient id="centerGrad" cx="50%" cy="50%" r="50%">
@@ -383,16 +485,33 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
 
         {/* 4 Corner Yards */}
         <rect x="0" y="0" width="240" height="240" fill="#FF4757" opacity="0.85" rx="12" />
-        <rect x="30" y="30" width="180" height="180" fill="#0F172A" rx="16" />
-        
+        <rect x="20" y="20" width="200" height="200" fill="#0F172A" rx="16" />
+
         <rect x="360" y="0" width="240" height="240" fill="#2ED573" opacity="0.85" rx="12" />
-        <rect x="390" y="30" width="180" height="180" fill="#0F172A" rx="16" />
+        <rect x="380" y="20" width="200" height="200" fill="#0F172A" rx="16" />
 
         <rect x="360" y="360" width="240" height="240" fill="#FFA502" opacity="0.85" rx="12" />
-        <rect x="390" y="390" width="180" height="180" fill="#0F172A" rx="16" />
+        <rect x="380" y="380" width="200" height="200" fill="#0F172A" rx="16" />
 
         <rect x="0" y="360" width="240" height="240" fill="#1E90FF" opacity="0.85" rx="12" />
-        <rect x="30" y="390" width="180" height="180" fill="#0F172A" rx="16" />
+        <rect x="20" y="380" width="200" height="200" fill="#0F172A" rx="16" />
+
+        {/* Centered Integrated Yard Player Cards */}
+        <foreignObject x="35" y="75" width="170" height="90">
+          <YardPlayerCard color="red" player={players['red']} isActive={activeColor === 'red'} isMe={myColor === 'red'} teamName={gameState.teams?.['red']} finishStep={56} />
+        </foreignObject>
+
+        <foreignObject x="395" y="75" width="170" height="90">
+          <YardPlayerCard color="green" player={players['green']} isActive={activeColor === 'green'} isMe={myColor === 'green'} teamName={gameState.teams?.['green']} finishStep={56} />
+        </foreignObject>
+
+        <foreignObject x="395" y="435" width="170" height="90">
+          <YardPlayerCard color="yellow" player={players['yellow']} isActive={activeColor === 'yellow'} isMe={myColor === 'yellow'} teamName={gameState.teams?.['yellow']} finishStep={56} />
+        </foreignObject>
+
+        <foreignObject x="35" y="435" width="170" height="90">
+          <YardPlayerCard color="blue" player={players['blue']} isActive={activeColor === 'blue'} isMe={myColor === 'blue'} teamName={gameState.teams?.['blue']} finishStep={56} />
+        </foreignObject>
 
         {/* Home Stretch Highlight Track Cells */}
         {HOME_PATHS_4P.red.slice(0, 5).map((cell, idx) => (
@@ -440,8 +559,8 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
         {/* Tokens Rendering */}
         {allRenderTokens.map(tok => {
           const totalOccupants = cellOccupants[tok.cellKey]?.length || 1;
-          const offsetInfo = tok.isYard 
-            ? { dx: 0, dy: 0, r: 14 } 
+          const offsetInfo = tok.isYard
+            ? { dx: 0, dy: 0, r: 14 }
             : getOccupantOffset(tok.occIdx, totalOccupants);
 
           const cx = tok.baseCx + offsetInfo.dx;
@@ -461,8 +580,8 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
           const colorHex = COLOR_HEX_4P[tok.color] || '#FFF';
 
           return (
-            <g 
-              key={tok.key} 
+            <g
+              key={tok.key}
               onClick={(e) => {
                 e.stopPropagation();
                 handleTokenClick(tok.color, tok.tIdx, cx, cy);
@@ -471,34 +590,34 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
             >
               {/* Outer Pulsing Ring for Moveable Tokens */}
               {isMoveable && (
-                <circle 
-                  cx={cx} 
-                  cy={cy} 
-                  r={r + 3.5} 
-                  fill="none" 
-                  stroke="#FFFFFF" 
-                  strokeWidth="2.5" 
-                  strokeDasharray="4 2" 
-                  className="token-moveable-ring" 
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={r + 3.5}
+                  fill="none"
+                  stroke="#FFFFFF"
+                  strokeWidth="2.5"
+                  strokeDasharray="4 2"
+                  className="token-moveable-ring"
                 />
               )}
               {/* Main Token Circle */}
-              <circle 
-                cx={cx} 
-                cy={cy} 
-                r={r} 
-                fill={colorHex} 
-                stroke="#FFFFFF" 
-                strokeWidth="2" 
+              <circle
+                cx={cx}
+                cy={cy}
+                r={r}
+                fill={colorHex}
+                stroke="#FFFFFF"
+                strokeWidth="2"
                 className="token-body"
               />
               {/* Glossy Center Specular Dot */}
-              <circle 
-                cx={cx - r * 0.25} 
-                cy={cy - r * 0.25} 
-                r={r * 0.35} 
-                fill="#FFFFFF" 
-                opacity="0.5" 
+              <circle
+                cx={cx - r * 0.25}
+                cy={cy - r * 0.25}
+                r={r * 0.35}
+                fill="#FFFFFF"
+                opacity="0.5"
                 className="token-specular"
               />
             </g>
@@ -507,25 +626,25 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
 
         {/* Contextual Roll Selection Popover near clicked token */}
         {activePopup && (
-          <g 
+          <g
             transform={`translate(${activePopup.coords.x}, ${Math.max(30, activePopup.coords.y - 36)})`}
           >
-            <rect 
-              x={- (activePopup.options.length * 38 + 12) / 2} 
-              y="-18" 
-              width={activePopup.options.length * 38 + 12} 
-              height="36" 
-              rx="18" 
-              fill="#0F172A" 
-              stroke="#6366F1" 
-              strokeWidth="2" 
+            <rect
+              x={- (activePopup.options.length * 38 + 12) / 2}
+              y="-18"
+              width={activePopup.options.length * 38 + 12}
+              height="36"
+              rx="18"
+              fill="#0F172A"
+              stroke="#6366F1"
+              strokeWidth="2"
               filter="drop-shadow(0 8px 16px rgba(0,0,0,0.7))"
             />
             {activePopup.options.map((opt, idx) => {
               const btnX = - (activePopup.options.length * 38) / 2 + idx * 38 + 19;
               return (
-                <g 
-                  key={`opt-${idx}`} 
+                <g
+                  key={`opt-${idx}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     sounds.playTokenStep();

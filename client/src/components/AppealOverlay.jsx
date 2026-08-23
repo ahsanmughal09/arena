@@ -76,6 +76,9 @@ export default function AppealOverlay({
 
   // 2. Demonstration Mode (10 seconds)
   if (inDemo) {
+    const appealingColor = appealState?.appealingColor;
+    const offendingColor = appealState?.offendingColor;
+    const demoTimeLeft = appealState?.demoTimeLeft;
     const isAppealer = myColor === appealingColor;
 
     return (

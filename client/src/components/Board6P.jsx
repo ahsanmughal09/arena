@@ -103,6 +103,103 @@ function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 
   return options;
 }
 
+function YardPlayerCard6P({ color, player, isActive, isMe, teamName, finishStep = 76 }) {
+  if (!player) {
+    return (
+      <div style={{
+        background: 'rgba(15, 23, 42, 0.85)',
+        borderRadius: '10px',
+        border: '1px dashed rgba(255,255,255,0.2)',
+        padding: '3px 6px',
+        textAlign: 'center',
+        color: '#64748B',
+        fontSize: '9px',
+        fontWeight: 600
+      }}>
+        Empty Slot
+      </div>
+    );
+  }
+
+  const finishedCount = player.tokens ? player.tokens.filter(s => s === finishStep).length : 0;
+  const isWinner = finishedCount === 4;
+
+  return (
+    <div style={{
+      background: isActive 
+        ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98))' 
+        : 'rgba(15, 23, 42, 0.85)',
+      borderRadius: '10px',
+      border: isActive ? `2px solid ${COLOR_HEX_6P[color] || '#6366F1'}` : '1px solid rgba(255, 255, 255, 0.2)',
+      boxShadow: isActive ? `0 0 14px ${COLOR_HEX_6P[color]}90` : '0 4px 10px rgba(0, 0, 0, 0.5)',
+      padding: '4px 6px',
+      color: '#FFF',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '2px',
+      fontSize: '9px',
+      userSelect: 'none'
+    }}>
+      {/* Top Row: Name & Active Turn Badge */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '3px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0 }}>
+          <div style={{
+            width: '6px',
+            height: '6px',
+            borderRadius: '50%',
+            background: player.connected ? '#2ED573' : '#64748B',
+            boxShadow: player.connected ? '0 0 5px #2ED573' : 'none',
+            flexShrink: 0
+          }} />
+          <span style={{ 
+            fontWeight: 800, 
+            fontSize: '10px',
+            whiteSpace: 'nowrap', 
+            overflow: 'hidden', 
+            textOverflow: 'ellipsis',
+            color: isActive ? COLOR_HEX_6P[color] : '#F8FAFC'
+          }}>
+            {player.name} {isMe ? '(You)' : ''}
+          </span>
+        </div>
+        {isActive && (
+          <span style={{
+            background: COLOR_HEX_6P[color],
+            color: '#0F172A',
+            fontSize: '7px',
+            fontWeight: 900,
+            padding: '1px 4px',
+            borderRadius: '4px',
+            textTransform: 'uppercase',
+            flexShrink: 0
+          }}>
+            TURN
+          </span>
+        )}
+      </div>
+
+      {/* Middle Row: Team Name & Winner Status */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '8px', color: '#94A3B8' }}>
+        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{teamName || color.toUpperCase()}</span>
+        {isWinner && <span style={{ color: '#F59E0B', fontWeight: 800 }}>🏆 WINNER</span>}
+      </div>
+
+      {/* Bottom Row: Kills, Home, Appeals Badges */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '2px', paddingTop: '2px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+        <span title="Kills" style={{ fontSize: '8px', color: '#EF4444', fontWeight: 700 }}>
+          ⚔️ {player.kills || 0}
+        </span>
+        <span title="Tokens in Home" style={{ fontSize: '8px', color: '#10B981', fontWeight: 700 }}>
+          🏠 {finishedCount}/4
+        </span>
+        <span title="Appeals Remaining" style={{ fontSize: '8px', color: '#F59E0B', fontWeight: 700 }}>
+          ⚖️ {player.appealsLeft ?? 3}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function Board6P({ gameState, myColor, onMoveToken }) {
   const [activePopup, setActivePopup] = useState(null);
   const [displaySteps, setDisplaySteps] = useState({});
@@ -126,7 +223,7 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
     }
   }, [gameState?.lastAction]);
 
-  // Step-by-Step animated movement & capture return loop for 6P
+  // Step-by-Step animated movement & capture return loop
   useEffect(() => {
     const action = gameState?.lastAction;
     if (!action || action.type !== 'MOVE') return;
@@ -139,47 +236,40 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
 
     if (current === target) return;
 
-    const timer = setTimeout(() => {
-      setDisplaySteps(prev => ({ ...prev, [key]: current }));
-    }, 0);
-
-    const isLoopAround = (oldStep >= 0 && oldStep < 71 && target < oldStep);
+    const isForward = target > current;
+    const stepDelta = isForward ? 1 : -1;
 
     const stepInterval = setInterval(() => {
-      if (isLoopAround) {
-        current = (current + 1) % 71;
-      } else {
-        current++;
-      }
-      sounds.playTokenStep();
+      current += stepDelta;
       setDisplaySteps(prev => ({ ...prev, [key]: current }));
 
       if (current === target) {
         clearInterval(stepInterval);
 
         if (captured) {
-          sounds.playCapture();
           const capKey = `${captured.color}-${captured.tokenIndex}`;
-          let capStep = (captured.oldStep !== undefined && captured.oldStep >= 0) ? captured.oldStep : target;
-          
-          setDisplaySteps(prev => ({ ...prev, [capKey]: capStep }));
+          let capCurrent = captured.oldStep !== undefined ? captured.oldStep : 0;
+          const capTarget = -1;
 
           const capInterval = setInterval(() => {
-            capStep = capStep - 1;
-            setDisplaySteps(prev => ({ ...prev, [capKey]: capStep }));
-            if (capStep <= -1) {
+            capCurrent -= 1;
+            setDisplaySteps(prev => ({ ...prev, [capKey]: capCurrent }));
+
+            if (capCurrent <= capTarget) {
               clearInterval(capInterval);
               setCapturedLocks(prev => {
                 const next = { ...prev };
                 delete next[capKey];
                 return next;
               });
-              setDisplaySteps(prev => {
-                const next = { ...prev };
-                delete next[capKey];
-                delete next[key];
-                return next;
-              });
+              setTimeout(() => {
+                setDisplaySteps(prev => {
+                  const next = { ...prev };
+                  delete next[capKey];
+                  delete next[key];
+                  return next;
+                });
+              }, 40);
             }
           }, 40);
         } else {
@@ -195,7 +285,6 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
     }, 120);
 
     return () => {
-      clearTimeout(timer);
       clearInterval(stepInterval);
     };
   }, [gameState?.lastAction]);
@@ -213,20 +302,20 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
   const getTrackCoords = (stepIndex) => {
     const totalSteps = 72;
     const angleRad = ((stepIndex / totalSteps) * 360 - 90) * (Math.PI / 180);
-    const radius = 290;
+    const radius = 295;
     return {
       x: cx + radius * Math.cos(angleRad),
       y: cy + radius * Math.sin(angleRad)
     };
   };
 
-  // Calculate Home Stretch path coords
+  // Home path coordinates for each color
   const getHomePathCoords = (color, stepIndex) => {
     const cIdx = PLAYER_COLORS.indexOf(color);
     const validCIdx = cIdx >= 0 ? cIdx : 0;
     const sectorAngleRad = ((validCIdx * 60) - 90) * (Math.PI / 180);
-    const rStart = 250;
-    const rEnd = 60;
+    const rStart = 270;
+    const rEnd = 75;
     const radius = rStart - ((stepIndex / 6) * (rStart - rEnd));
     return {
       x: cx + radius * Math.cos(sectorAngleRad),
@@ -234,7 +323,7 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
     };
   };
 
-  // Yard display positions
+  // Yard display positions (4 corners surrounding centered info card)
   const getYardCoords = (color, tokenIndex) => {
     const cIdx = PLAYER_COLORS.indexOf(color);
     const validCIdx = cIdx >= 0 ? cIdx : 0;
@@ -244,10 +333,10 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
     const baseY = cy + baseRadius * Math.sin(angleRad);
 
     const offsets = [
-      { x: -14, y: -14 },
-      { x: 14, y: -14 },
-      { x: -14, y: 14 },
-      { x: 14, y: 14 }
+      { x: -50, y: -45 },
+      { x: 50, y: -45 },
+      { x: -50, y: 45 },
+      { x: 50, y: 45 }
     ];
     const off = offsets[tokenIndex % 4];
     return { x: baseX + off.x, y: baseY + off.y };
@@ -287,7 +376,19 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
     }
   };
 
-  // Group all tokens by their cell location for sub-grid multi-token positioning
+  // Calculate sector center for 6 radial yard bases
+  const sectors = PLAYER_COLORS.map((c, idx) => {
+    const angleRad = ((idx * 60) - 90) * (Math.PI / 180);
+    const baseRadius = 345;
+    return {
+      color: c,
+      x: cx + baseRadius * Math.cos(angleRad),
+      y: cy + baseRadius * Math.sin(angleRad),
+      hex: COLOR_HEX_6P[c] || '#6366F1'
+    };
+  });
+
+  // Group all tokens by their cell location for multi-token offset positioning
   const cellOccupants = {};
   const allRenderTokens = [];
 
@@ -305,22 +406,29 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
               : step);
 
         let key;
-        let basePos = { x: 400, y: 400 };
+        let baseCx = cx;
+        let baseCy = cy;
         let isYard = false;
 
         if (stepToRender === -1) {
           isYard = true;
-          basePos = getYardCoords(color, tIdx);
+          const pos = getYardCoords(color, tIdx);
+          baseCx = pos.x;
+          baseCy = pos.y;
           key = `yard-${color}-${tIdx}`;
         } else if (stepToRender < 71) {
           const cIdx = PLAYER_COLORS.indexOf(color);
-          const startStep = (cIdx >= 0 ? cIdx : 0) * 12;
-          const absStep = (startStep + stepToRender) % 72;
-          basePos = getTrackCoords(absStep);
-          key = `main-${absStep}`;
+          const startTrackIdx = (cIdx >= 0 ? cIdx : 0) * 12;
+          const absIndex = (startTrackIdx + stepToRender) % 72;
+          const pos = getTrackCoords(absIndex);
+          baseCx = pos.x;
+          baseCy = pos.y;
+          key = `main-${absIndex}`;
         } else {
           const homeStep = stepToRender - 71;
-          basePos = getHomePathCoords(color, Math.min(homeStep, 5));
+          const pos = getHomePathCoords(color, Math.min(homeStep, 5));
+          baseCx = pos.x;
+          baseCy = pos.y;
           key = `home-${color}-${homeStep}`;
         }
 
@@ -333,8 +441,8 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
           color,
           tIdx,
           step: stepToRender,
-          baseCx: basePos.x,
-          baseCy: basePos.y,
+          baseCx,
+          baseCy,
           cellKey: key,
           occIdx,
           isYard
@@ -342,18 +450,6 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
       });
     });
   }
-
-  // Generate 6 hex sectors for visual layout
-  const sectors = PLAYER_COLORS.map((col, idx) => {
-    const angleRad = ((idx * 60) - 90) * (Math.PI / 180);
-    const radius = 350;
-    return {
-      color: col,
-      hex: COLOR_HEX_6P[col],
-      x: cx + radius * Math.cos(angleRad),
-      y: cy + radius * Math.sin(angleRad)
-    };
-  });
 
   return (
     <div 
@@ -396,7 +492,19 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
 
         {/* 6 Color Sector Bases */}
         {sectors.map((sec, idx) => (
-          <circle key={`sec-${idx}`} cx={sec.x} cy={sec.y} r="38" fill={sec.hex} opacity="0.8" stroke="#FFFFFF" strokeWidth="2" />
+          <g key={`sec-group-${idx}`}>
+            <circle cx={sec.x} cy={sec.y} r="54" fill={sec.hex} opacity="0.85" stroke="#FFFFFF" strokeWidth="2" />
+            <foreignObject x={sec.x - 65} y={sec.y - 50} width="130" height="70">
+              <YardPlayerCard6P 
+                color={sec.color} 
+                player={players[sec.color]} 
+                isActive={activeColor === sec.color} 
+                isMe={myColor === sec.color} 
+                teamName={gameState.teams?.[sec.color]} 
+                finishStep={76} 
+              />
+            </foreignObject>
+          </g>
         ))}
 
         {/* 72 Track Spots */}
