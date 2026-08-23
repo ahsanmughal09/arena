@@ -186,8 +186,8 @@ export default function App() {
     });
   };
 
-  const handleRollDice = () => {
-    socket.emit('ROLL_DICE', { roomCode });
+  const handleRollDice = (selectedDiceIndex = 0) => {
+    socket.emit('ROLL_DICE', { roomCode, selectedDiceIndex });
   };
 
   const handleSelectRoll = (rollIndex) => {
@@ -348,6 +348,8 @@ export default function App() {
                   onRollDice={handleRollDice}
                   onSelectRoll={handleSelectRoll}
                   diceCount={gameState.customRules?.diceCount || 1}
+                  allTokensInHome={gameState.allTokensInHome}
+                  isHomeDiceSelectionMode={gameState.isHomeDiceSelectionMode}
                 />
               </div>
 

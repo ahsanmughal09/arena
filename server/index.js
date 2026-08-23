@@ -144,14 +144,14 @@ io.on('connection', (socket) => {
   });
 
   // Roll Dice
-  socket.on('ROLL_DICE', ({ roomCode }) => {
+  socket.on('ROLL_DICE', ({ roomCode, selectedDiceIndex }) => {
     const room = roomManager.rooms.get(roomCode);
     if (!room || !room.engine.gameStarted) return;
 
     const info = roomManager.socketToRoom.get(socket.id);
     if (!info || info.color !== room.engine.getActiveColor()) return;
 
-    const rollRes = room.engine.rollDice();
+    const rollRes = room.engine.rollDice(selectedDiceIndex);
     if (rollRes) {
       roomManager.resetTimer(room);
       io.to(roomCode).emit('DICE_ROLLED', {

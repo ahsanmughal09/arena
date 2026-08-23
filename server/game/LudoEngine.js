@@ -171,7 +171,7 @@ class LudoEngine {
     this.hasExtraTurn = false;
   }
 
-  rollDice() {
+  rollDice(selectedDiceIndex = 0) {
     if (!this.gameStarted || this.gameOver || !this.canRoll) return null;
 
     if (!this.turnStartSnapshot) {
@@ -179,6 +179,31 @@ class LudoEngine {
     }
 
     if (this.customRules.diceCount === 2) {
+      const allInHome = this.areAllTokensInHome(this.getActiveColor());
+
+      if (allInHome) {
+        // Player's tokens are all in Home -> Roll ONLY 1 chosen dice (Purple = 0, White = 1)
+        const chosenIdx = (selectedDiceIndex === 1) ? 1 : 0;
+        const roll = Math.floor(Math.random() * 6) + 1;
+        this.currentDice = chosenIdx === 1 ? [null, roll] : [roll, null];
+        this.turnDiceRolls.push(roll);
+        this.dicePool = [roll];
+        this.isHomeDiceSelectionMode = true;
+        this.consecutiveSixes = 0;
+        this.canRoll = false; // NO extra roll turn on 6 when all tokens are in Home!
+
+        this.autoSelectValidRoll();
+
+        if (this.validMoves.length === 0) {
+          this.lastAction = { type: 'NO_VALID_MOVES', color: this.getActiveColor(), rolled: this.currentDice, dicePool: [...this.dicePool] };
+        } else {
+          this.lastAction = { type: 'ROLLED_NUMBER', color: this.getActiveColor(), rolled: this.currentDice, dicePool: [...this.dicePool] };
+        }
+
+        return { roll: this.currentDice, penalty: false, dicePool: this.dicePool, canRoll: false, validMoves: this.validMoves };
+      }
+
+      this.isHomeDiceSelectionMode = false;
       const roll1 = Math.floor(Math.random() * 6) + 1;
       const roll2 = Math.floor(Math.random() * 6) + 1;
       this.currentDice = [roll1, roll2];
@@ -430,8 +455,12 @@ class LudoEngine {
     }
 
     let turnFinished = false;
-    // Check remaining dice pool
-    if (this.dicePool.length > 0) {
+    // Check remaining dice pool or single dice selection mode for home tokens
+    if (this.isHomeDiceSelectionMode) {
+      this.dicePool = [];
+      this.isHomeDiceSelectionMode = false;
+      turnFinished = true;
+    } else if (this.dicePool.length > 0) {
       const hasMoves = this.autoSelectValidRoll();
       if (!hasMoves) {
         // No remaining valid moves for any dice in pool -> clear pool
@@ -731,7 +760,19 @@ class LudoEngine {
     }
   }
 
+  areAllTokensInHome(color) {
+    const p = this.players[color];
+    if (!p || !p.tokens) return false;
+    const outerLen = this.outerTrackLength || (this.mode === '4P' ? 51 : 71);
+    return p.tokens.every(step => step >= outerLen);
+  }
+
   getGameState() {
+    let exportedDice = this.currentDice;
+    if (exportedDice === null || exportedDice === undefined) {
+      exportedDice = this.dicePool[this.selectedRollIndex] || (this.dicePool.length > 0 ? this.dicePool[0] : null);
+    }
+
     return {
       mode: this.mode,
       teamMode: this.teamMode,
@@ -741,7 +782,7 @@ class LudoEngine {
       teams: this.teams,
       players: this.players,
       activeColor: this.getActiveColor(),
-      currentDice: this.dicePool[this.selectedRollIndex] || this.currentDice || null,
+      currentDice: exportedDice,
       dicePool: this.dicePool,
       selectedRollIndex: this.selectedRollIndex,
       canRoll: this.canRoll,
@@ -755,7 +796,9 @@ class LudoEngine {
       appealState: this.appealState,
       finishStep: this.finishStep,
       canAppealLastTurn: this.canAppealLastTurn,
-      lastTurnOffendingColor: this.lastTurnOffendingColor
+      lastTurnOffendingColor: this.lastTurnOffendingColor,
+      isHomeDiceSelectionMode: !!this.isHomeDiceSelectionMode,
+      allTokensInHome: this.areAllTokensInHome(this.getActiveColor())
     };
   }
 }
