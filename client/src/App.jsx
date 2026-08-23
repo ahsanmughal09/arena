@@ -258,7 +258,7 @@ export default function App() {
 
       {/* Active Game View */}
       {view === 'game' && gameState && (
-        <div style={{ position: 'relative', height: '100vh', maxHeight: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '6px 12px', boxSizing: 'border-box', gap: '8px' }}>
+        <div style={{ position: 'relative', height: '100vh', maxHeight: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '4px 10px', boxSizing: 'border-box', gap: '6px' }}>
           
           {/* Appeal System Overlay (Zero-Wait Turn Rollback & 10s Demo Mode) */}
           <AppealOverlay 
