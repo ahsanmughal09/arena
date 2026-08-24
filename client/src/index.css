@@ -164,3 +164,134 @@ circle.token-body, circle.token-moveable-ring, circle.token-specular {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.4);
 }
+
+/* ==========================================================================
+   Throwable Items Animations & Styling
+   ========================================================================== */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.7) translateY(20px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.throw-item-btn:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+.throw-item-btn:hover span:first-child {
+  transform: scale(1.25) rotate(-10deg);
+}
+
+@keyframes flyArc {
+  0% {
+    transform: translate(var(--start-x), var(--start-y)) scale(0.6) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(calc((var(--start-x) + var(--end-x)) / 2), calc((var(--start-y) + var(--end-y)) / 2 - 120px)) scale(1.4) rotate(360deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--end-x), var(--end-y)) scale(1.1) rotate(720deg);
+    opacity: 1;
+  }
+}
+
+.flying-throwable-item {
+  animation: flyArc 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  will-change: transform;
+}
+
+/* Impact Splat Keyframes */
+@keyframes splatBounce {
+  0% { transform: scale(0.2) rotate(-20deg); opacity: 0; }
+  40% { transform: scale(1.4) rotate(10deg); opacity: 1; }
+  60% { transform: scale(0.95) rotate(-5deg); opacity: 1; }
+  80% { transform: scale(1.05) rotate(0deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes splatFade {
+  0% { opacity: 1; filter: none; }
+  70% { opacity: 1; }
+  100% { opacity: 0; filter: blur(4px); }
+}
+
+.impact-bomb, .impact-egg, .impact-tomato, .impact-sandal, 
+.impact-flower, .impact-heart, .impact-banana, .impact-poop {
+  animation: splatBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards, splatFade 2.5s ease-out forwards;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.impact-text {
+  font-weight: 900;
+  font-size: 1.2rem;
+  letter-spacing: 1px;
+  text-shadow: 0 0 10px rgba(0,0,0,0.8), 0 2px 4px rgba(0,0,0,0.9);
+  white-space: nowrap;
+}
+
+.bomb-text { color: #FF4757; }
+.slap-text { color: #FFA502; }
+.slip-text { color: #2ED573; }
+
+/* Splat Stains */
+.yolk-splat {
+  position: absolute;
+  width: 90px;
+  height: 90px;
+  background: radial-gradient(circle, #FCD34D 30%, #F59E0B 70%, transparent 80%);
+  border-radius: 40% 60% 70% 30% / 50% 30% 70% 50%;
+  opacity: 0.75;
+  filter: drop-shadow(0 4px 10px rgba(245, 158, 11, 0.6));
+  z-index: -1;
+  animation: pulseSplat 1s infinite alternate;
+}
+
+.tomato-splat {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(circle, #EF4444 35%, #B91C1C 75%, transparent 85%);
+  border-radius: 60% 40% 30% 70% / 40% 60% 40% 60%;
+  opacity: 0.8;
+  filter: drop-shadow(0 4px 12px rgba(239, 68, 68, 0.7));
+  z-index: -1;
+}
+
+.poop-splat {
+  position: absolute;
+  width: 90px;
+  height: 90px;
+  background: radial-gradient(circle, #78350F 40%, #451A03 80%, transparent 90%);
+  border-radius: 50% 50% 30% 70% / 60% 40% 60% 40%;
+  opacity: 0.8;
+  filter: drop-shadow(0 4px 10px rgba(69, 26, 3, 0.8));
+  z-index: -1;
+}
+
+@keyframes burstFloat {
+  0% { transform: scale(0.5) translateY(0); opacity: 1; }
+  100% { transform: scale(1.4) translateY(-40px); opacity: 0; }
+}
+
+.petal-burst, .heart-burst {
+  position: absolute;
+  display: flex;
+  gap: 10px;
+  font-size: 1.5rem;
+  animation: burstFloat 1.2s ease-out forwards;
+}
+

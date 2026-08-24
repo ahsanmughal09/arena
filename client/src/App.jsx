@@ -9,6 +9,8 @@ import DiceRoller from './components/DiceRoller';
 import ChatPanel from './components/ChatPanel';
 import VictoryModal from './components/VictoryModal';
 import AppealOverlay from './components/AppealOverlay';
+import ThrowableOverlay from './components/ThrowableOverlay';
+import ThrowablePickerModal from './components/ThrowablePickerModal';
 
 export default function App() {
   const [view, setView] = useState('home'); // 'home', 'lobby', 'game'
@@ -19,6 +21,10 @@ export default function App() {
   const [gameState, setGameState] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [, setTimeLeft] = useState(30);
+
+  // Throwable Items State
+  const [activeThrows, setActiveThrows] = useState([]);
+  const [throwTarget, setThrowTarget] = useState(null);
 
   useEffect(() => {
     // Socket Event Listeners
@@ -98,6 +104,10 @@ export default function App() {
       } : prev);
     });
 
+    socket.on('ITEM_THROWN', (throwData) => {
+      setActiveThrows(prev => [...prev, throwData]);
+    });
+
     return () => {
       socket.off('ROOM_UPDATED');
       socket.off('GAME_STARTED');
@@ -112,6 +122,7 @@ export default function App() {
       socket.off('APPEAL_RESOLVED');
       socket.off('APPEAL_TICK');
       socket.off('APPEAL_DEMO_TICK');
+      socket.off('ITEM_THROWN');
     };
   }, [myColor]);
 
@@ -208,6 +219,15 @@ export default function App() {
     socket.emit('SUBMIT_APPEAL', { roomCode });
   };
 
+  const handleOpenThrowMenu = (targetColor, targetName) => {
+    sounds.playClick();
+    setThrowTarget({ targetColor, targetName });
+  };
+
+  const handleSelectThrowItem = (targetColor, item) => {
+    socket.emit('THROW_ITEM', { roomCode, targetColor, item });
+  };
+
   const handlePlayAgain = () => {
     sessionStorage.removeItem('ludo_session');
     setView('home');
@@ -239,6 +259,19 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-main)', color: '#FFF' }}>
       
+      {/* Global Throwable Items Flight & Splat Overlay */}
+      <ThrowableOverlay activeThrows={activeThrows} />
+
+      {/* Throwable Item Picker Modal */}
+      {throwTarget && (
+        <ThrowablePickerModal
+          targetColor={throwTarget.targetColor}
+          targetName={throwTarget.targetName}
+          onSelect={handleSelectThrowItem}
+          onClose={() => setThrowTarget(null)}
+        />
+      )}
+
       {/* Home View */}
       {view === 'home' && (
         <HomeLobby onCreateRoom={handleCreateRoom} onJoinRoom={handleJoinRoom} />
@@ -251,8 +284,10 @@ export default function App() {
           slots={slots} 
           settings={settings} 
           isHost={isHost} 
+          myColor={myColor}
           onStartGame={handleStartGame} 
           onLeaveRoom={handleLeaveRoom}
+          onOpenThrowMenu={handleOpenThrowMenu}
         />
       )}
 
@@ -324,9 +359,9 @@ export default function App() {
             {/* Left Column: Interactive Board with Integrated Yard Participant Info */}
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: 0 }}>
               {gameState.mode === '4P' ? (
-                <Board4P gameState={gameState} myColor={myColor} onMoveToken={handleMoveToken} />
+                <Board4P gameState={gameState} myColor={myColor} onMoveToken={handleMoveToken} onOpenThrowMenu={handleOpenThrowMenu} />
               ) : (
-                <Board6P gameState={gameState} myColor={myColor} onMoveToken={handleMoveToken} />
+                <Board6P gameState={gameState} myColor={myColor} onMoveToken={handleMoveToken} onOpenThrowMenu={handleOpenThrowMenu} />
               )}
             </div>
 

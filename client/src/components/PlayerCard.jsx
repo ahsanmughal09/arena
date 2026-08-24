@@ -10,10 +10,10 @@ const COLOR_HEX = {
   purple: '#A55EEA'
 };
 
-export default function PlayerCard({ color, player, isActive, isMe, teamName, finishStep, timeLeft, turnTimer }) {
+export default function PlayerCard({ color, player, isActive, isMe, teamName, finishStep, timeLeft, turnTimer, onOpenThrowMenu }) {
   if (!player) {
     return (
-      <div className="glass-panel" style={{ padding: '12px 16px', opacity: 0.4, display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div data-player-color={color} className="glass-panel" style={{ padding: '12px 16px', opacity: 0.4, display: 'flex', alignItems: 'center', gap: '12px' }}>
         <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#334155' }} />
         <span style={{ fontSize: '0.85rem', color: '#94A3B8' }}>Empty Slot ({color.toUpperCase()})</span>
       </div>
@@ -26,6 +26,7 @@ export default function PlayerCard({ color, player, isActive, isMe, teamName, fi
 
   return (
     <div 
+      data-player-color={color}
       className={`glass-panel ${isActive ? 'active-turn-ring' : ''}`}
       style={{
         padding: '12px 16px',
@@ -65,6 +66,31 @@ export default function PlayerCard({ color, player, isActive, isMe, teamName, fi
               {player.name} {isMe && <span style={{ fontSize: '0.75rem', color: '#818CF8' }}>(You)</span>}
             </span>
             {finishedCount === 4 && <Crown size={16} color="#FFA502" />}
+            {!isMe && onOpenThrowMenu && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenThrowMenu(color, player.name);
+                }}
+                title={`Throw item at ${player.name}`}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  borderRadius: '6px',
+                  color: '#FFF',
+                  fontSize: '11px',
+                  padding: '2px 6px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '2px',
+                  transition: 'all 0.2s ease',
+                  lineHeight: 1
+                }}
+              >
+                🎯
+              </button>
+            )}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>

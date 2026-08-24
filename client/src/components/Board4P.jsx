@@ -53,57 +53,43 @@ const COLOR_HEX_4P = {
   blue: '#1E90FF'
 };
 
-function YardPlayerCard({ color, player, isActive, isMe, teamName, finishStep }) {
-  if (!player) {
-    return (
-      <div style={{
-        background: 'rgba(15, 23, 42, 0.85)',
-        borderRadius: '12px',
-        border: '1px dashed rgba(255,255,255,0.2)',
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#64748B',
-        fontSize: '10px',
-        fontWeight: 600
-      }}>
-        Empty Slot
-      </div>
-    );
-  }
-
-  const finishedCount = player.tokens ? player.tokens.filter(s => s === finishStep).length : 0;
+function YardPlayerCard({ color, player, isActive, isMe, teamName, finishStep, onOpenThrowMenu }) {
+  const playerName = player ? player.name : `Empty (${color.toUpperCase()})`;
+  const finishedCount = player && player.tokens ? player.tokens.filter(s => s === finishStep).length : 0;
   const isWinner = finishedCount === 4;
+  const canThrowAtPlayer = player && player.connected && !isMe;
 
   return (
-    <div style={{
-      background: isActive
-        ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98))'
-        : 'rgba(15, 23, 42, 0.88)',
-      borderRadius: '14px',
-      border: isActive ? `2px solid ${COLOR_HEX_4P[color] || '#6366F1'}` : '1.5px solid rgba(255, 255, 255, 0.25)',
-      boxShadow: isActive ? `0 0 20px ${COLOR_HEX_4P[color]}A0` : '0 6px 16px rgba(0, 0, 0, 0.6)',
-      padding: '6px 10px',
-      color: '#FFF',
-      height: '100%',
-      boxSizing: 'border-box',
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'center',
-      gap: '3px',
-      fontSize: '10px',
-      userSelect: 'none'
-    }}>
-      {/* Top Row: Online Dot + Player Name + Turn Badge */}
+    <div 
+      data-player-color={color}
+      style={{
+        background: isActive
+          ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98))'
+          : player ? 'rgba(15, 23, 42, 0.88)' : 'rgba(15, 23, 42, 0.4)',
+        borderRadius: '14px',
+        border: isActive ? `2px solid ${COLOR_HEX_4P[color] || '#6366F1'}` : '1.5px solid rgba(255, 255, 255, 0.25)',
+        boxShadow: isActive ? `0 0 20px ${COLOR_HEX_4P[color]}A0` : '0 6px 16px rgba(0, 0, 0, 0.6)',
+        padding: '6px 10px',
+        color: '#FFF',
+        height: '100%',
+        boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        gap: '3px',
+        fontSize: '10px',
+        userSelect: 'none'
+      }}
+    >
+      {/* Top Row: Online Dot + Player Name + Target Throw Button & Turn Badge */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0 }}>
           <div style={{
             width: '8px',
             height: '8px',
             borderRadius: '50%',
-            background: player.connected ? '#2ED573' : '#64748B',
-            boxShadow: player.connected ? '0 0 6px #2ED573' : 'none',
+            background: player && player.connected ? '#2ED573' : '#64748B',
+            boxShadow: player && player.connected ? '0 0 6px #2ED573' : 'none',
             flexShrink: 0
           }} />
           <span style={{
@@ -112,25 +98,53 @@ function YardPlayerCard({ color, player, isActive, isMe, teamName, finishStep })
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
-            color: isActive ? COLOR_HEX_4P[color] : '#F8FAFC'
+            color: isActive ? COLOR_HEX_4P[color] : player ? '#F8FAFC' : '#94A3B8'
           }}>
-            {player.name} {isMe ? '(You)' : ''}
+            {playerName} {isMe ? '(You)' : ''}
           </span>
         </div>
-        {isActive && (
-          <span style={{
-            background: COLOR_HEX_4P[color],
-            color: '#0F172A',
-            fontSize: '8px',
-            fontWeight: 900,
-            padding: '1px 5px',
-            borderRadius: '5px',
-            textTransform: 'uppercase',
-            flexShrink: 0
-          }}>
-            TURN
-          </span>
-        )}
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          {canThrowAtPlayer && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onOpenThrowMenu) onOpenThrowMenu(color, playerName);
+              }}
+              title={`Throw item at ${playerName}`}
+              style={{
+                background: 'rgba(255, 255, 255, 0.18)',
+                border: '1px solid rgba(255, 255, 255, 0.35)',
+                borderRadius: '6px',
+                color: '#FFF',
+                fontSize: '11px',
+                padding: '2px 5px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '2px',
+                transition: 'all 0.2s ease',
+                lineHeight: 1
+              }}
+            >
+              🎯
+            </button>
+          )}
+          {isActive && (
+            <span style={{
+              background: COLOR_HEX_4P[color],
+              color: '#0F172A',
+              fontSize: '8px',
+              fontWeight: 900,
+              padding: '1px 5px',
+              borderRadius: '5px',
+              textTransform: 'uppercase',
+              flexShrink: 0
+            }}>
+              TURN
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Middle Row: Team Name & Winner Status */}
@@ -142,13 +156,13 @@ function YardPlayerCard({ color, player, isActive, isMe, teamName, finishStep })
       {/* Bottom Row: Kills, Home, Appeals Badges */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '2px', paddingTop: '3px', borderTop: '1px solid rgba(255,255,255,0.15)' }}>
         <span title="Kills" style={{ fontSize: '10px', color: '#EF4444', fontWeight: 700 }}>
-          ⚔️ {player.kills || 0}
+          ⚔️ {player?.kills || 0}
         </span>
         <span title="Tokens in Home" style={{ fontSize: '10px', color: '#10B981', fontWeight: 700 }}>
           🏠 {finishedCount}/4
         </span>
         <span title="Appeals Remaining" style={{ fontSize: '10px', color: '#F59E0B', fontWeight: 700 }}>
-          ⚖️ {player.appealsLeft ?? 3}
+          ⚖️ {player?.appealsLeft ?? 3}
         </span>
       </div>
     </div>
@@ -244,7 +258,7 @@ function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 
   return options;
 }
 
-export default function Board4P({ gameState, myColor, onMoveToken }) {
+export default function Board4P({ gameState, myColor, onMoveToken, onOpenThrowMenu }) {
   const [activePopup, setActivePopup] = useState(null);
   const [displaySteps, setDisplaySteps] = useState({});
   const [capturedLocks, setCapturedLocks] = useState({});
@@ -498,19 +512,19 @@ export default function Board4P({ gameState, myColor, onMoveToken }) {
 
         {/* Centered Integrated Yard Player Cards */}
         <foreignObject x="35" y="75" width="170" height="90">
-          <YardPlayerCard color="red" player={players['red']} isActive={activeColor === 'red'} isMe={myColor === 'red'} teamName={gameState.teams?.['red']} finishStep={56} />
+          <YardPlayerCard color="red" player={players['red']} isActive={activeColor === 'red'} isMe={myColor === 'red'} teamName={gameState.teams?.['red']} finishStep={56} onOpenThrowMenu={onOpenThrowMenu} />
         </foreignObject>
 
         <foreignObject x="395" y="75" width="170" height="90">
-          <YardPlayerCard color="green" player={players['green']} isActive={activeColor === 'green'} isMe={myColor === 'green'} teamName={gameState.teams?.['green']} finishStep={56} />
+          <YardPlayerCard color="green" player={players['green']} isActive={activeColor === 'green'} isMe={myColor === 'green'} teamName={gameState.teams?.['green']} finishStep={56} onOpenThrowMenu={onOpenThrowMenu} />
         </foreignObject>
 
         <foreignObject x="395" y="435" width="170" height="90">
-          <YardPlayerCard color="yellow" player={players['yellow']} isActive={activeColor === 'yellow'} isMe={myColor === 'yellow'} teamName={gameState.teams?.['yellow']} finishStep={56} />
+          <YardPlayerCard color="yellow" player={players['yellow']} isActive={activeColor === 'yellow'} isMe={myColor === 'yellow'} teamName={gameState.teams?.['yellow']} finishStep={56} onOpenThrowMenu={onOpenThrowMenu} />
         </foreignObject>
 
         <foreignObject x="35" y="435" width="170" height="90">
-          <YardPlayerCard color="blue" player={players['blue']} isActive={activeColor === 'blue'} isMe={myColor === 'blue'} teamName={gameState.teams?.['blue']} finishStep={56} />
+          <YardPlayerCard color="blue" player={players['blue']} isActive={activeColor === 'blue'} isMe={myColor === 'blue'} teamName={gameState.teams?.['blue']} finishStep={56} onOpenThrowMenu={onOpenThrowMenu} />
         </foreignObject>
 
         {/* Home Stretch Highlight Track Cells */}

@@ -103,52 +103,40 @@ function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 
   return options;
 }
 
-function YardPlayerCard6P({ color, player, isActive, isMe, teamName, finishStep = 76 }) {
-  if (!player) {
-    return (
-      <div style={{
-        background: 'rgba(15, 23, 42, 0.85)',
-        borderRadius: '10px',
-        border: '1px dashed rgba(255,255,255,0.2)',
-        padding: '3px 6px',
-        textAlign: 'center',
-        color: '#64748B',
-        fontSize: '9px',
-        fontWeight: 600
-      }}>
-        Empty Slot
-      </div>
-    );
-  }
-
-  const finishedCount = player.tokens ? player.tokens.filter(s => s === finishStep).length : 0;
+function YardPlayerCard6P({ color, player, isActive, isMe, teamName, finishStep = 76, onOpenThrowMenu }) {
+  const playerName = player ? player.name : `Empty (${color.toUpperCase()})`;
+  const finishedCount = player && player.tokens ? player.tokens.filter(s => s === finishStep).length : 0;
   const isWinner = finishedCount === 4;
+  const canThrowAtPlayer = player && player.connected && !isMe;
 
   return (
-    <div style={{
-      background: isActive 
-        ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98))' 
-        : 'rgba(15, 23, 42, 0.85)',
-      borderRadius: '10px',
-      border: isActive ? `2px solid ${COLOR_HEX_6P[color] || '#6366F1'}` : '1px solid rgba(255, 255, 255, 0.2)',
-      boxShadow: isActive ? `0 0 14px ${COLOR_HEX_6P[color]}90` : '0 4px 10px rgba(0, 0, 0, 0.5)',
-      padding: '4px 6px',
-      color: '#FFF',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '2px',
-      fontSize: '9px',
-      userSelect: 'none'
-    }}>
-      {/* Top Row: Name & Active Turn Badge */}
+    <div 
+      data-player-color={color}
+      style={{
+        background: isActive 
+          ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98))' 
+          : player ? 'rgba(15, 23, 42, 0.85)' : 'rgba(15, 23, 42, 0.4)',
+        borderRadius: '10px',
+        border: isActive ? `2px solid ${COLOR_HEX_6P[color] || '#6366F1'}` : '1px solid rgba(255, 255, 255, 0.2)',
+        boxShadow: isActive ? `0 0 14px ${COLOR_HEX_6P[color]}90` : '0 4px 10px rgba(0, 0, 0, 0.5)',
+        padding: '4px 6px',
+        color: '#FFF',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '2px',
+        fontSize: '9px',
+        userSelect: 'none'
+      }}
+    >
+      {/* Top Row: Name & Active Turn Badge & Target Throw Button */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '3px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0 }}>
           <div style={{
             width: '6px',
             height: '6px',
             borderRadius: '50%',
-            background: player.connected ? '#2ED573' : '#64748B',
-            boxShadow: player.connected ? '0 0 5px #2ED573' : 'none',
+            background: player && player.connected ? '#2ED573' : '#64748B',
+            boxShadow: player && player.connected ? '0 0 5px #2ED573' : 'none',
             flexShrink: 0
           }} />
           <span style={{ 
@@ -157,25 +145,51 @@ function YardPlayerCard6P({ color, player, isActive, isMe, teamName, finishStep 
             whiteSpace: 'nowrap', 
             overflow: 'hidden', 
             textOverflow: 'ellipsis',
-            color: isActive ? COLOR_HEX_6P[color] : '#F8FAFC'
+            color: isActive ? COLOR_HEX_6P[color] : player ? '#F8FAFC' : '#94A3B8'
           }}>
-            {player.name} {isMe ? '(You)' : ''}
+            {playerName} {isMe ? '(You)' : ''}
           </span>
         </div>
-        {isActive && (
-          <span style={{
-            background: COLOR_HEX_6P[color],
-            color: '#0F172A',
-            fontSize: '7px',
-            fontWeight: 900,
-            padding: '1px 4px',
-            borderRadius: '4px',
-            textTransform: 'uppercase',
-            flexShrink: 0
-          }}>
-            TURN
-          </span>
-        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+          {canThrowAtPlayer && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onOpenThrowMenu) onOpenThrowMenu(color, playerName);
+              }}
+              title={`Throw item at ${playerName}`}
+              style={{
+                background: 'rgba(255, 255, 255, 0.18)',
+                border: '1px solid rgba(255, 255, 255, 0.35)',
+                borderRadius: '5px',
+                color: '#FFF',
+                fontSize: '10px',
+                padding: '1px 4px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                lineHeight: 1
+              }}
+            >
+              🎯
+            </button>
+          )}
+          {isActive && (
+            <span style={{
+              background: COLOR_HEX_6P[color],
+              color: '#0F172A',
+              fontSize: '7px',
+              fontWeight: 900,
+              padding: '1px 4px',
+              borderRadius: '4px',
+              textTransform: 'uppercase',
+              flexShrink: 0
+            }}>
+              TURN
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Middle Row: Team Name & Winner Status */}
@@ -187,20 +201,20 @@ function YardPlayerCard6P({ color, player, isActive, isMe, teamName, finishStep 
       {/* Bottom Row: Kills, Home, Appeals Badges */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '2px', paddingTop: '2px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
         <span title="Kills" style={{ fontSize: '8px', color: '#EF4444', fontWeight: 700 }}>
-          ⚔️ {player.kills || 0}
+          ⚔️ {player?.kills || 0}
         </span>
         <span title="Tokens in Home" style={{ fontSize: '8px', color: '#10B981', fontWeight: 700 }}>
           🏠 {finishedCount}/4
         </span>
         <span title="Appeals Remaining" style={{ fontSize: '8px', color: '#F59E0B', fontWeight: 700 }}>
-          ⚖️ {player.appealsLeft ?? 3}
+          ⚖️ {player?.appealsLeft ?? 3}
         </span>
       </div>
     </div>
   );
 }
 
-export default function Board6P({ gameState, myColor, onMoveToken }) {
+export default function Board6P({ gameState, myColor, onMoveToken, onOpenThrowMenu }) {
   const [activePopup, setActivePopup] = useState(null);
   const [displaySteps, setDisplaySteps] = useState({});
   const [capturedLocks, setCapturedLocks] = useState({});
@@ -502,6 +516,7 @@ export default function Board6P({ gameState, myColor, onMoveToken }) {
                 isMe={myColor === sec.color} 
                 teamName={gameState.teams?.[sec.color]} 
                 finishStep={76} 
+                onOpenThrowMenu={onOpenThrowMenu}
               />
             </foreignObject>
           </g>

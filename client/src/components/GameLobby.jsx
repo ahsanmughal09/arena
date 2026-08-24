@@ -11,7 +11,7 @@ const COLOR_HEX = {
   purple: '#A55EEA'
 };
 
-export default function GameLobby({ roomCode, slots, settings, isHost, onStartGame, onLeaveRoom }) {
+export default function GameLobby({ roomCode, slots, settings, isHost, myColor, onStartGame, onLeaveRoom, onOpenThrowMenu }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopyCode = () => {
@@ -70,9 +70,12 @@ export default function GameLobby({ roomCode, slots, settings, isHost, onStartGa
             {(settings.mode === '4P' ? ['red', 'green', 'yellow', 'blue'] : ['red', 'green', 'yellow', 'blue', 'orange', 'purple']).map(color => {
               const slot = slots ? slots[color] : null;
               const isConnected = slot && slot.connected;
+              const slotName = isConnected ? slot.name : `${color.toUpperCase()} Slot`;
+              const canThrowAtPlayer = isConnected && color !== myColor;
               return (
                 <div 
                   key={`slot-${color}`}
+                  data-player-color={color}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -86,14 +89,39 @@ export default function GameLobby({ roomCode, slots, settings, isHost, onStartGa
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: COLOR_HEX[color] }} />
                     <div style={{ fontSize: '0.9rem', fontWeight: isConnected ? 700 : 400, color: isConnected ? '#FFF' : '#64748B' }}>
-                      {isConnected ? slot.name : 'Waiting...'}
+                      {slotName}
                       {slot?.isHost && <span style={{ fontSize: '0.7rem', color: '#818CF8', marginLeft: '6px' }}>(Host)</span>}
                     </div>
                   </div>
 
-                  <span style={{ fontSize: '0.8rem', color: isConnected ? '#2ED573' : '#64748B', fontWeight: 600 }}>
-                    {isConnected ? '✓ Ready' : 'Empty'}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {canThrowAtPlayer && onOpenThrowMenu && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenThrowMenu(color, slotName);
+                        }}
+                        title={`Throw item at ${slotName}`}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.15)',
+                          border: '1px solid rgba(255, 255, 255, 0.3)',
+                          borderRadius: '6px',
+                          color: '#FFF',
+                          fontSize: '12px',
+                          padding: '3px 7px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          lineHeight: 1
+                        }}
+                      >
+                        🎯
+                      </button>
+                    )}
+                    <span style={{ fontSize: '0.8rem', color: isConnected ? '#2ED573' : '#64748B', fontWeight: 600 }}>
+                      {isConnected ? '✓ Ready' : 'Empty'}
+                    </span>
+                  </div>
                 </div>
               );
             })}

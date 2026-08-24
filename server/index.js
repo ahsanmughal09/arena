@@ -303,6 +303,55 @@ io.on('connection', (socket) => {
     io.to(roomCode).emit('CHAT_MESSAGE', chatItem);
   });
 
+  // Throw Item at Player
+  socket.on('THROW_ITEM', ({ roomCode, targetColor, item }) => {
+    const info = roomManager.socketToRoom.get(socket.id);
+    if (!info) return;
+    const room = roomManager.rooms.get(roomCode);
+    if (!room) return;
+
+    const fromColor = info.color;
+    if (!fromColor || !targetColor || fromColor === targetColor) return;
+
+    const targetSlot = room.playerSlots[targetColor];
+    if (!targetSlot || !targetSlot.connected) return;
+
+    const itemEmojiMap = {
+      banana: '🍌',
+      sandal: '👡',
+      flower: '🌸',
+      heart: '❤️',
+      bomb: '💣',
+      tomato: '🍅',
+      egg: '🥚',
+      poop: '💩'
+    };
+
+    const itemEmoji = itemEmojiMap[item] || '🎯';
+    const senderName = room.playerSlots[fromColor]?.name || fromColor.toUpperCase();
+    const targetName = room.playerSlots[targetColor]?.name || targetColor.toUpperCase();
+
+    // Broadcast projectile action to all clients in the room
+    io.to(roomCode).emit('ITEM_THROWN', {
+      id: `${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      fromColor,
+      targetColor,
+      item,
+      senderName,
+      targetName
+    });
+
+    // Add chat system message
+    const chatItem = {
+      sender: 'System',
+      text: `${senderName} threw a ${itemEmoji} at ${targetName}!`,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    room.chatHistory.push(chatItem);
+    if (room.chatHistory.length > 50) room.chatHistory.shift();
+    io.to(roomCode).emit('CHAT_MESSAGE', chatItem);
+  });
+
   // Disconnect handler
   socket.on('disconnect', () => {
     console.log(`Socket disconnected: ${socket.id}`);
