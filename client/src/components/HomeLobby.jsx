@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Users, Shield, Timer, Play, LogIn } from 'lucide-react';
 import { sounds } from '../utils/audio';
 
-export default function HomeLobby({ onCreateRoom, onJoinRoom }) {
+export default function HomeLobby({ onCreateRoom, onJoinRoom, showAlert }) {
   const [name, setName] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [tab, setTab] = useState('create'); // 'create' or 'join'
@@ -31,7 +31,9 @@ export default function HomeLobby({ onCreateRoom, onJoinRoom }) {
   const handleCreateSubmit = (e) => {
     e.preventDefault();
     if (!name.trim()) {
-      alert('Please enter your nickname');
+      if (showAlert) {
+        showAlert('Nickname Required', 'Please enter your nickname before creating a room.', 'warning');
+      }
       return;
     }
     sounds.playClick();
@@ -50,11 +52,15 @@ export default function HomeLobby({ onCreateRoom, onJoinRoom }) {
   const handleJoinSubmit = (e) => {
     e.preventDefault();
     if (!name.trim()) {
-      alert('Please enter your nickname');
+      if (showAlert) {
+        showAlert('Nickname Required', 'Please enter your nickname before joining a room.', 'warning');
+      }
       return;
     }
     if (!joinCode.trim()) {
-      alert('Please enter a valid 6-character room code');
+      if (showAlert) {
+        showAlert('Invalid Room Code', 'Please enter a valid 6-character room code.', 'warning');
+      }
       return;
     }
     sounds.playClick();

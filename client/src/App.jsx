@@ -12,6 +12,7 @@ import AppealOverlay from './components/AppealOverlay';
 import ThrowableOverlay from './components/ThrowableOverlay';
 import ThrowablePickerModal from './components/ThrowablePickerModal';
 import ExtraTurnBanner from './components/ExtraTurnBanner';
+import ConfirmModal from './components/ConfirmModal';
 
 export default function App() {
   const [view, setView] = useState('home'); // 'home', 'lobby', 'game'
@@ -29,6 +30,38 @@ export default function App() {
 
   // Extra Turn Notification State
   const [extraTurnNotice, setExtraTurnNotice] = useState(null);
+
+  // Custom Modal State (replaces native alert and confirm)
+  const [modalConfig, setModalConfig] = useState(null);
+
+  const showAlert = (title, message, variant = 'warning') => {
+    setModalConfig({
+      isOpen: true,
+      type: 'alert',
+      variant,
+      title,
+      message,
+      confirmText: 'OK',
+      onConfirm: () => setModalConfig(null)
+    });
+  };
+
+  const showConfirm = ({ title, message, confirmText, cancelText, variant = 'danger', onConfirm }) => {
+    setModalConfig({
+      isOpen: true,
+      type: 'confirm',
+      variant,
+      title,
+      message,
+      confirmText: confirmText || 'Confirm',
+      cancelText: cancelText || 'Cancel',
+      onConfirm: () => {
+        setModalConfig(null);
+        if (onConfirm) onConfirm();
+      },
+      onCancel: () => setModalConfig(null)
+    });
+  };
 
   useEffect(() => {
     // Socket Event Listeners
@@ -195,7 +228,7 @@ export default function App() {
         sessionStorage.setItem('ludo_session', JSON.stringify({ roomCode: res.roomCode, color: res.color, name }));
         setView('lobby');
       } else {
-        alert(res.error || 'Failed to create room.');
+        showAlert('Create Room Failed', res.error || 'Failed to create room.', 'error');
       }
     });
   };
@@ -211,7 +244,7 @@ export default function App() {
         sessionStorage.setItem('ludo_session', JSON.stringify({ roomCode: res.roomCode, color: res.color, name }));
         setView('lobby');
       } else {
-        alert(res.error || 'Failed to join room.');
+        showAlert('Join Room Failed', res.error || 'Failed to join room.', 'error');
       }
     });
   };
@@ -219,7 +252,7 @@ export default function App() {
   const handleStartGame = () => {
     socket.emit('START_GAME', { roomCode }, (res) => {
       if (res && res.error) {
-        alert(res.error);
+        showAlert('Cannot Start Match', res.error, 'error');
       }
     });
   };
@@ -264,20 +297,29 @@ export default function App() {
 
   const handleLeaveRoom = () => {
     const isPlaying = (view === 'game');
-    const confirmText = isPlaying 
-      ? 'Are you sure you want to surrender and leave the match?' 
+    const title = isPlaying ? 'Surrender Match?' : 'Leave Room?';
+    const message = isPlaying 
+      ? 'Are you sure you want to surrender and leave the active match?' 
       : 'Are you sure you want to leave the room?';
+    const confirmText = isPlaying ? 'Surrender & Leave' : 'Leave Room';
 
-    if (window.confirm(confirmText)) {
-      sounds.playClick();
-      socket.emit('LEAVE_ROOM', { roomCode, color: myColor });
-      sessionStorage.removeItem('ludo_session');
-      setView('home');
-      setRoomCode('');
-      setMyColor('');
-      setGameState(null);
-      setSlots({});
-    }
+    showConfirm({
+      title,
+      message,
+      confirmText,
+      cancelText: 'Stay in Room',
+      variant: 'danger',
+      onConfirm: () => {
+        sounds.playClick();
+        socket.emit('LEAVE_ROOM', { roomCode, color: myColor });
+        sessionStorage.removeItem('ludo_session');
+        setView('home');
+        setRoomCode('');
+        setMyColor('');
+        setGameState(null);
+        setSlots({});
+      }
+    });
   };
 
   const isHost = slots[myColor]?.isHost;
@@ -292,6 +334,11 @@ export default function App() {
       {/* Extra Turn Notification Banner */}
       <ExtraTurnBanner notice={extraTurnNotice} onClose={() => setExtraTurnNotice(null)} />
 
+      {/* Custom Alert & Confirm Modal */}
+      {modalConfig?.isOpen && (
+        <ConfirmModal {...modalConfig} />
+      )}
+
       {/* Throwable Item Picker Modal */}
       {throwTarget && (
         <ThrowablePickerModal
@@ -304,7 +351,7 @@ export default function App() {
 
       {/* Home View */}
       {view === 'home' && (
-        <HomeLobby onCreateRoom={handleCreateRoom} onJoinRoom={handleJoinRoom} />
+        <HomeLobby onCreateRoom={handleCreateRoom} onJoinRoom={handleJoinRoom} showAlert={showAlert} />
       )}
 
       {/* Lobby View */}
