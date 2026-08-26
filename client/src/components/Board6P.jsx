@@ -240,7 +240,106 @@ export default function Board6P({ gameState, myColor, onMoveToken, onOpenThrowMe
   // Step-by-Step animated movement & capture return loop
   useEffect(() => {
     const action = gameState?.lastAction;
-    if (!action || action.type !== 'MOVE') return;
+    if (!action || (action.type !== 'MOVE' && action.type !== 'DEMO_MOVE')) return;
+
+    if (action.type === 'DEMO_MOVE') {
+      const { color, tokenIndex, oldStep, targetStep, appealingColor, penalized, postMoveTokens } = action;
+      const key = `${color}-${tokenIndex}`;
+
+      let current = oldStep === -1 ? 0 : oldStep;
+      const target = targetStep;
+
+      const triggerDemoBanner = () => {
+        sounds.playCapture();
+        if (onActionComplete) {
+          onActionComplete({
+            color: appealingColor || color,
+            title: '🎯 MISSED KILL PROVEN!',
+            subtitle: `${color.toUpperCase()}'s token penalized to yard! Turn granted to ${(appealingColor || color).toUpperCase()}! 🎯`,
+            icon: '🎯'
+          });
+        }
+      };
+
+      const runReturnToYard = () => {
+        let retStep = target;
+        const retInterval = setInterval(() => {
+          retStep = Math.max(-1, retStep - 2);
+          setDisplaySteps(prev => ({ ...prev, [key]: retStep }));
+
+          if (retStep <= -1) {
+            clearInterval(retInterval);
+            setDisplaySteps(prev => {
+              const next = { ...prev };
+              delete next[key];
+              return next;
+            });
+
+            // STAGE 3: Animate offending player's other token to postMove location
+            if (postMoveTokens && postMoveTokens.length > 0) {
+              postMoveTokens.forEach((pmTarget, pmIdx) => {
+                if (pmIdx !== tokenIndex && pmTarget >= 0) {
+                  const pmKey = `${color}-${pmIdx}`;
+                  let pmCurrent = 0;
+                  const pmInterval = setInterval(() => {
+                    pmCurrent += 2;
+                    if (pmCurrent > pmTarget) pmCurrent = pmTarget;
+                    sounds.playTokenStep();
+                    setDisplaySteps(prev => ({ ...prev, [pmKey]: pmCurrent }));
+                    if (pmCurrent >= pmTarget) {
+                      clearInterval(pmInterval);
+                      setTimeout(() => {
+                        setDisplaySteps(prev => {
+                          const next = { ...prev };
+                          delete next[pmKey];
+                          return next;
+                        });
+                      }, 100);
+                    }
+                  }, 60);
+                }
+              });
+            }
+          }
+        }, 40);
+      };
+
+      if (current === target && oldStep >= 0) {
+        triggerDemoBanner();
+        if (penalized) runReturnToYard();
+        return;
+      }
+
+      const isForward = target > current;
+      const stepDelta = isForward ? 1 : -1;
+
+      const stepInterval = setInterval(() => {
+        current += stepDelta;
+        sounds.playTokenStep();
+        setDisplaySteps(prev => ({ ...prev, [key]: current }));
+
+        if (current === target) {
+          clearInterval(stepInterval);
+          triggerDemoBanner();
+
+          if (penalized) {
+            runReturnToYard();
+          } else {
+            setTimeout(() => {
+              setDisplaySteps(prev => {
+                const next = { ...prev };
+                delete next[key];
+                return next;
+              });
+            }, 100);
+          }
+        }
+      }, 120);
+
+      return () => {
+        clearInterval(stepInterval);
+      };
+    }
 
     const { color, tokenIndex, oldStep, newStep, captured, reachesHome } = action;
     const key = `${color}-${tokenIndex}`;

@@ -570,6 +570,9 @@ class LudoEngine {
     this.players = JSON.parse(JSON.stringify(this.lastTurnSnapshot.players));
     this.dicePool = [...demoPool];
 
+    // Clear previous move action so tokens stay stationary until demo tap!
+    this.lastAction = { type: 'APPEAL_SUBMIT', appealingColor, offendingColor };
+
     return { success: true, appealState: this.appealState };
   }
 
@@ -610,6 +613,11 @@ class LudoEngine {
       this.appealState.inDemo = false;
       this.appealState.inWindow = false;
 
+      // Get postMoveSnapshot positions for offending player's tokens
+      const postMoveTokens = this.postMoveSnapshot && this.postMoveSnapshot.players[offendingColor] 
+        ? [...this.postMoveSnapshot.players[offendingColor].tokens] 
+        : null;
+
       // Restore board to postMoveSnapshot
       if (this.postMoveSnapshot) {
         this.players = JSON.parse(JSON.stringify(this.postMoveSnapshot.players));
@@ -635,6 +643,18 @@ class LudoEngine {
         this.activePlayerIndex = appealingIdx;
       }
       this.canRoll = true;
+
+      // Record DEMO_MOVE action for smooth 3-stage frontend animation & banner
+      this.lastAction = {
+        type: 'DEMO_MOVE',
+        color: offendingColor,
+        tokenIndex: tokenIndex,
+        oldStep: oldStep,
+        targetStep: newStep,
+        penalized: true,
+        appealingColor: appealingColor,
+        postMoveTokens: postMoveTokens
+      };
 
       this.savePostMoveSnapshot();
 
