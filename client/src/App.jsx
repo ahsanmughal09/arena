@@ -358,16 +358,6 @@ export default function App() {
       {view === 'game' && gameState && (
         <div style={{ position: 'relative', height: '100vh', maxHeight: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '4px 10px', boxSizing: 'border-box', gap: '6px' }}>
           
-          {/* Appeal System Overlay (Zero-Wait Turn Rollback & 10s Demo Mode) */}
-          <AppealOverlay 
-            appealState={gameState.appealState}
-            canAppealLastTurn={gameState.canAppealLastTurn}
-            lastTurnOffendingColor={gameState.lastTurnOffendingColor}
-            myColor={myColor}
-            playerAppealsLeft={gameState.players[myColor]?.appealsLeft ?? 3}
-            onSubmitAppeal={handleSubmitAppeal}
-          />
-          
           {/* Top Bar / Header */}
           <div className="glass-panel" style={{ padding: '6px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -416,10 +406,20 @@ export default function App() {
             </div>
           </div>
 
-          {/* Main Game Layout (Zero Scroll 2-Column Board & Controls Layout) */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 240px', gap: '14px', flex: 1, minHeight: 0, alignItems: 'center' }}>
+          {/* Main Game Layout (3-Column Layout: Left Chat | Center Board | Right Controls & Appeals) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr 240px', gap: '14px', flex: 1, minHeight: 0, alignItems: 'center' }}>
             
-            {/* Left Column: Interactive Board with Integrated Yard Participant Info */}
+            {/* Left Column: Room Chat & Emote Reactions */}
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+              <ChatPanel 
+                roomCode={roomCode}
+                socket={socket}
+                chatMessages={chatMessages}
+                myColor={myColor}
+              />
+            </div>
+
+            {/* Center Column: Interactive Board with Integrated Yard Participant Info */}
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: 0 }}>
               {gameState.mode === '4P' ? (
                 <Board4P gameState={gameState} myColor={myColor} onMoveToken={handleMoveToken} onOpenThrowMenu={handleOpenThrowMenu} onActionComplete={handleBoardActionComplete} />
@@ -428,10 +428,10 @@ export default function App() {
               )}
             </div>
 
-            {/* Right Column: Dice Roller (Top Right of Ludo) + Chat Panel (Bottom Right) */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%', minHeight: 0 }}>
+            {/* Right Column: Dice Roller (Top Right) + Appeal Section (Middle Right) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%', minHeight: 0, justifyContent: 'flex-start' }}>
               
-              {/* Dice Roller on Right Side of Ludo */}
+              {/* Dice Roller */}
               <div className="glass-panel" style={{ padding: '14px', display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
                 <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#818CF8', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   🎲 Dice Controls
@@ -451,15 +451,15 @@ export default function App() {
                 />
               </div>
 
-              {/* Chat Panel Below Dice Roller */}
-              <div style={{ flex: 1, minHeight: 0 }}>
-                <ChatPanel 
-                  roomCode={roomCode}
-                  socket={socket}
-                  chatMessages={chatMessages}
-                  myColor={myColor}
-                />
-              </div>
+              {/* Appeal Section in Right Column */}
+              <AppealOverlay 
+                appealState={gameState.appealState}
+                canAppealLastTurn={gameState.canAppealLastTurn}
+                lastTurnOffendingColor={gameState.lastTurnOffendingColor}
+                myColor={myColor}
+                playerAppealsLeft={gameState.players[myColor]?.appealsLeft ?? 3}
+                onSubmitAppeal={handleSubmitAppeal}
+              />
 
             </div>
 

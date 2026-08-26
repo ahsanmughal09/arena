@@ -130,14 +130,26 @@ export default function DiceRoller({
   let displayVal2 = null;
   let displayDiceVal = null;
 
+  // When player can roll and showingSixDelay has ended, show ? ? to indicate ready for next roll!
+  const isReadyToRoll = canRoll && !showingSixDelay && !rolling;
+
   if (isDualDice) {
-    const arr = Array.isArray(currentDice) ? currentDice : [null, null];
-    displayVal1 = (arr[0] !== null && arr[0] !== undefined) ? arr[0] : (dicePool[0] || null);
-    displayVal2 = (arr[1] !== null && arr[1] !== undefined) ? arr[1] : (dicePool[1] || null);
+    if (isReadyToRoll) {
+      displayVal1 = null;
+      displayVal2 = null;
+    } else {
+      const arr = Array.isArray(currentDice) ? currentDice : [null, null];
+      displayVal1 = (arr[0] !== null && arr[0] !== undefined) ? arr[0] : (dicePool[0] || null);
+      displayVal2 = (arr[1] !== null && arr[1] !== undefined) ? arr[1] : (dicePool[1] || null);
+    }
   } else {
-    displayDiceVal = (currentDice !== null && currentDice !== undefined) 
-      ? currentDice 
-      : (dicePool[selectedRollIndex] !== undefined ? dicePool[selectedRollIndex] : (dicePool.length > 0 ? dicePool[0] : null));
+    if (isReadyToRoll) {
+      displayDiceVal = null;
+    } else {
+      displayDiceVal = (currentDice !== null && currentDice !== undefined) 
+        ? currentDice 
+        : (dicePool[selectedRollIndex] !== undefined ? dicePool[selectedRollIndex] : (dicePool.length > 0 ? dicePool[0] : null));
+    }
   }
 
   const showBalance = !isHomeDiceSelectionMode && !allTokensInHome && dicePool && dicePool.length > 1;
