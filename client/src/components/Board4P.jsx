@@ -258,7 +258,7 @@ function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 
   return options;
 }
 
-export default function Board4P({ gameState, myColor, onMoveToken, onOpenThrowMenu }) {
+export default function Board4P({ gameState, myColor, onMoveToken, onOpenThrowMenu, onActionComplete }) {
   const [activePopup, setActivePopup] = useState(null);
   const [displaySteps, setDisplaySteps] = useState({});
   const [capturedLocks, setCapturedLocks] = useState({});
@@ -286,13 +286,40 @@ export default function Board4P({ gameState, myColor, onMoveToken, onOpenThrowMe
     const action = gameState?.lastAction;
     if (!action || action.type !== 'MOVE') return;
 
-    const { color, tokenIndex, oldStep, newStep, captured } = action;
+    const { color, tokenIndex, oldStep, newStep, captured, reachesHome } = action;
     const key = `${color}-${tokenIndex}`;
 
     let current = oldStep === -1 ? 0 : oldStep;
     const target = newStep;
 
-    if (current === target) return;
+    const notifyCompletion = () => {
+      if (captured) {
+        sounds.playCapture();
+        if (onActionComplete) {
+          onActionComplete({
+            color: color || action.color,
+            title: 'EXTRA TURN!',
+            subtitle: `${(color || action.color).toUpperCase()} captured an opponent! ⚔️`,
+            icon: '⚔️'
+          });
+        }
+      } else if (reachesHome) {
+        sounds.playExtraTurn();
+        if (onActionComplete) {
+          onActionComplete({
+            color: color || action.color,
+            title: 'EXTRA TURN!',
+            subtitle: `${(color || action.color).toUpperCase()}'s token reached Home! 🏠`,
+            icon: '🏠'
+          });
+        }
+      }
+    };
+
+    if (current === target) {
+      notifyCompletion();
+      return;
+    }
 
     const timer = setTimeout(() => {
       setDisplaySteps(prev => ({ ...prev, [key]: current }));
@@ -311,9 +338,9 @@ export default function Board4P({ gameState, myColor, onMoveToken, onOpenThrowMe
 
       if (current === target) {
         clearInterval(stepInterval);
+        notifyCompletion();
 
         if (captured) {
-          sounds.playCapture();
           const capKey = `${captured.color}-${captured.tokenIndex}`;
           let capStep = (captured.oldStep !== undefined && captured.oldStep >= 0) ? captured.oldStep : target;
 

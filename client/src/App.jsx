@@ -91,28 +91,8 @@ export default function App() {
       }
     });
 
-    socket.on('TOKEN_MOVED', ({ color, moveRes, state }) => {
+    socket.on('TOKEN_MOVED', ({ state }) => {
       setGameState(state);
-      const action = moveRes?.action || moveRes?.moveRes?.action;
-      if (action && action.captured) {
-        sounds.playCapture();
-        setExtraTurnNotice({
-          color: color || action.color,
-          title: 'EXTRA TURN!',
-          subtitle: `${(color || action.color).toUpperCase()} captured an opponent! ⚔️`,
-          icon: '⚔️'
-        });
-      } else if (action && action.reachesHome) {
-        sounds.playTokenStep();
-        setExtraTurnNotice({
-          color: color || action.color,
-          title: 'EXTRA TURN!',
-          subtitle: `${(color || action.color).toUpperCase()}'s token reached Home! 🏠`,
-          icon: '🏠'
-        });
-      } else {
-        sounds.playTokenStep();
-      }
     });
 
     socket.on('GAME_STATE_UPDATE', ({ state }) => {
@@ -279,6 +259,12 @@ export default function App() {
     socket.emit('SUBMIT_APPEAL', { roomCode });
   };
 
+  const handleBoardActionComplete = (noticeInfo) => {
+    if (noticeInfo) {
+      setExtraTurnNotice(noticeInfo);
+    }
+  };
+
   const handleOpenThrowMenu = (targetColor, targetName) => {
     sounds.playClick();
     setThrowTarget({ targetColor, targetName });
@@ -436,9 +422,9 @@ export default function App() {
             {/* Left Column: Interactive Board with Integrated Yard Participant Info */}
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: 0 }}>
               {gameState.mode === '4P' ? (
-                <Board4P gameState={gameState} myColor={myColor} onMoveToken={handleMoveToken} onOpenThrowMenu={handleOpenThrowMenu} />
+                <Board4P gameState={gameState} myColor={myColor} onMoveToken={handleMoveToken} onOpenThrowMenu={handleOpenThrowMenu} onActionComplete={handleBoardActionComplete} />
               ) : (
-                <Board6P gameState={gameState} myColor={myColor} onMoveToken={handleMoveToken} onOpenThrowMenu={handleOpenThrowMenu} />
+                <Board6P gameState={gameState} myColor={myColor} onMoveToken={handleMoveToken} onOpenThrowMenu={handleOpenThrowMenu} onActionComplete={handleBoardActionComplete} />
               )}
             </div>
 
