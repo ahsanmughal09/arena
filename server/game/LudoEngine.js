@@ -303,6 +303,31 @@ class LudoEngine {
     return false;
   }
 
+  getSmartAutoMoveTokenIndex() {
+    if (this.canRoll || this.dicePool.length === 0 || this.gameOver) return null;
+
+    const activeColor = this.getActiveColor();
+    const player = this.players[activeColor];
+    if (!player || !player.tokens) return null;
+
+    // Find all unique token indices that have a valid move with ANY remaining roll in dicePool
+    const movableTokenIndices = new Set();
+
+    this.dicePool.forEach(rollVal => {
+      const validForRoll = this.calculateValidMoves(activeColor, rollVal);
+      validForRoll.forEach(tIdx => movableTokenIndices.add(tIdx));
+    });
+
+    const uniqueMovableTokens = Array.from(movableTokenIndices);
+
+    // Auto-move IF AND ONLY IF exactly 1 unique token has valid moves across all available rolls!
+    if (uniqueMovableTokens.length === 1) {
+      return uniqueMovableTokens[0];
+    }
+
+    return null;
+  }
+
   selectRoll(rollIndex) {
     if (rollIndex < 0 || rollIndex >= this.dicePool.length) return false;
     this.selectedRollIndex = rollIndex;

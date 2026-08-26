@@ -173,9 +173,39 @@ io.on('connection', (socket) => {
             io.to(roomCode).emit('GAME_STATE_UPDATE', { state: room.engine.getGameState() });
           }
         }, 1100);
+      } else if (!rollRes.penalty && !rollRes.canRoll) {
+        // Smart Auto-Move: If only 1 unique token has legal moves, auto-move without waiting!
+        checkAndTriggerSmartAutoMove(room, roomCode);
       }
     }
   });
+
+  // Helper: Smart Auto-Move Single Choice Tokens
+  function checkAndTriggerSmartAutoMove(room, roomCode) {
+    if (!room || !room.engine || room.engine.gameOver || room.engine.canRoll) return;
+
+    const autoTokenIdx = room.engine.getSmartAutoMoveTokenIndex();
+    if (autoTokenIdx !== null) {
+      setTimeout(() => {
+        if (!room || !room.engine || room.engine.gameOver || room.engine.canRoll) return;
+        const activeColor = room.engine.getActiveColor();
+        const moveRes = room.engine.moveToken(activeColor, autoTokenIdx);
+
+        if (moveRes && moveRes.success) {
+          roomManager.resetTimer(room);
+          io.to(roomCode).emit('TOKEN_MOVED', {
+            color: activeColor,
+            tokenIndex: autoTokenIdx,
+            moveRes,
+            state: room.engine.getGameState()
+          });
+
+          // Check for next forced auto-move on remaining dice in pool
+          checkAndTriggerSmartAutoMove(room, roomCode);
+        }
+      }, 400);
+    }
+  }
 
   // Move Token
   socket.on('MOVE_TOKEN', ({ roomCode, tokenIndex, rollIndex }) => {
@@ -195,7 +225,8 @@ io.on('connection', (socket) => {
         state: room.engine.getGameState()
       });
 
-      // Broadcast TOKEN_MOVED and updated game state (zero-wait non-blocking turn transition)
+      // Check if remaining roll in pool has a forced auto-move
+      checkAndTriggerSmartAutoMove(room, roomCode);
     }
   });
 
