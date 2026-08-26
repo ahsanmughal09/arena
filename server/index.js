@@ -266,7 +266,9 @@ io.on('connection', (socket) => {
           room.appealDemoTimer = null;
         }
 
-        room.engine.finishTurn();
+        if (!demoRes.appealSucceeded) {
+          room.engine.finishTurn();
+        }
         roomManager.resetTimer(room);
         io.to(roomCode).emit('APPEAL_RESOLVED', {
           success: demoRes.appealSucceeded,

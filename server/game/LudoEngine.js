@@ -602,10 +602,10 @@ class LudoEngine {
       captured = this.checkCapture(offendingColor, newPos.step);
     }
 
-    const appealingTeam = this.teams[appealingColor];
-    const isTargetTeam = captured && (this.teams[captured.color] === appealingTeam);
+    const offendingTeam = this.teams[offendingColor];
+    const isOpponentCaptured = captured && (this.teams[captured.color] !== offendingTeam);
 
-    if (captured && isTargetTeam) {
+    if (isOpponentCaptured) {
       // SUCCESSFUL DEMONSTRATION! Missed kill proven!
       this.appealState.inDemo = false;
       this.appealState.inWindow = false;
@@ -626,6 +626,15 @@ class LudoEngine {
       this.dicePool = [];
       this.selectedRollIndex = 0;
       this.validMoves = [];
+      this.hasExtraTurn = false;
+      this.currentDice = null;
+
+      // Transfer active turn directly to appealing player!
+      const appealingIdx = this.colors.indexOf(appealingColor);
+      if (appealingIdx !== -1) {
+        this.activePlayerIndex = appealingIdx;
+      }
+      this.canRoll = true;
 
       this.savePostMoveSnapshot();
 
