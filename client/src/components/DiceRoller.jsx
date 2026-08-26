@@ -90,7 +90,9 @@ export default function DiceRoller({
   onSelectRoll,
   diceCount = 1,
   allTokensInHome = false,
-  isHomeDiceSelectionMode = false
+  isHomeDiceSelectionMode = false,
+  timeLeft = null,
+  maxTime = 30
 }) {
   const [rolling, setRolling] = useState(false);
   const [showingSixDelay, setShowingSixDelay] = useState(false);
@@ -155,7 +157,51 @@ export default function DiceRoller({
   const showBalance = !isHomeDiceSelectionMode && !allTokensInHome && dicePool && dicePool.length > 1;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '100%' }}>
+      
+      {/* Real-Time Turn Timer Gauge */}
+      {timeLeft !== undefined && timeLeft !== null && (
+        <div style={{
+          width: '100%',
+          background: 'rgba(15, 23, 42, 0.85)',
+          borderRadius: '12px',
+          border: '1.5px solid rgba(255, 255, 255, 0.15)',
+          padding: '8px 12px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '5px',
+          boxSizing: 'border-box',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.4)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              ⏳ {isMyTurn ? 'Your Turn Timer:' : `${activeColor?.toUpperCase()}'s Timer:`}
+            </span>
+            <span style={{ 
+              fontSize: '0.95rem', 
+              fontWeight: 900, 
+              color: timeLeft <= 5 ? '#FF4757' : (timeLeft <= 10 ? '#FFA502' : '#2ED573'),
+              animation: timeLeft <= 5 ? 'pulse 0.6s infinite' : 'none'
+            }}>
+              {timeLeft}s
+            </span>
+          </div>
+
+          {/* Smooth Shrinking Progress Bar */}
+          <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+            <div style={{
+              height: '100%',
+              width: `${Math.max(0, Math.min(100, (timeLeft / (maxTime || 30)) * 100))}%`,
+              background: timeLeft <= 5 
+                ? 'linear-gradient(90deg, #FF4757, #FF6B81)' 
+                : (timeLeft <= 10 ? 'linear-gradient(90deg, #FFA502, #FF7F50)' : 'linear-gradient(90deg, #2ED573, #10B981)'),
+              borderRadius: '3px',
+              transition: 'width 0.4s linear, background 0.3s ease'
+            }} />
+          </div>
+        </div>
+      )}
       
       {/* Pre-Roll Single Dice Selection Prompt (All Tokens in Home) */}
       {allTokensInHome && canRoll && isDualDice && (

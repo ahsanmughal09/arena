@@ -233,13 +233,11 @@ class RoomManager {
       this.io.to(room.code).emit('DICE_ROLLED', { color: activeColor, ...rollRes, state: engine.getGameState() });
 
       if (rollRes && rollRes.validMoves.length > 0) {
-        // Auto-pick first valid move after brief delay
-        setTimeout(() => {
-          const tokenIndex = rollRes.validMoves[0];
-          const moveRes = engine.moveToken(activeColor, tokenIndex);
-          this.io.to(room.code).emit('TOKEN_MOVED', { state: engine.getGameState(), moveRes });
-          this.resetTimer(room);
-        }, 800);
+        // Auto-pick first valid move IMMEDIATELY with zero wait!
+        const tokenIndex = rollRes.validMoves[0];
+        const moveRes = engine.moveToken(activeColor, tokenIndex);
+        this.io.to(room.code).emit('TOKEN_MOVED', { state: engine.getGameState(), moveRes });
+        this.resetTimer(room);
       } else {
         this.resetTimer(room);
       }

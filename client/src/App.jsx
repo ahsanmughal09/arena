@@ -22,7 +22,7 @@ export default function App() {
   const [settings, setSettings] = useState({ mode: '4P', teamMode: 'solo', turnTimer: 30 });
   const [gameState, setGameState] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
-  const [, setTimeLeft] = useState(30);
+  const [timeLeft, setTimeLeft] = useState(30);
 
   // Throwable Items State
   const [activeThrows, setActiveThrows] = useState([]);
@@ -448,6 +448,8 @@ export default function App() {
                   diceCount={gameState.customRules?.diceCount || 1}
                   allTokensInHome={gameState.allTokensInHome}
                   isHomeDiceSelectionMode={gameState.isHomeDiceSelectionMode}
+                  timeLeft={timeLeft}
+                  maxTime={gameState.turnTimer || 30}
                 />
               </div>
 
@@ -474,5 +476,61 @@ export default function App() {
       )}
 
     </div>
+  );
+}
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Ludo Game ErrorBoundary caught an error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          minHeight: '100vh',
+          background: 'var(--bg-main)',
+          color: '#FFF',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: '20px'
+        }}>
+          <div className="glass-panel" style={{ padding: '30px', maxWidth: '480px', textAlign: 'center' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#FF4757', marginBottom: '12px' }}>
+              ⚠️ Something went wrong
+            </h2>
+            <p style={{ fontSize: '0.9rem', color: '#CBD5E1', marginBottom: '20px' }}>
+              An unexpected error occurred in the game interface.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="glass-btn primary"
+              style={{ padding: '10px 20px', fontSize: '0.95rem' }}
+            >
+              🔄 Reload Game
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+export function WrappedApp() {
+  return (
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   );
 }
