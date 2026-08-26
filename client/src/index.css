@@ -351,3 +351,20 @@ circle.token-body, circle.token-moveable-ring, circle.token-specular {
   100% { transform: scale(1.25) rotate(10deg); }
 }
 
+/* ==========================================================================
+   Smooth Token Movement Transitions
+   ========================================================================== */
+.token-body, .token-moveable-ring, circle[cx] {
+  transition: cx 0.08s ease-out, cy 0.08s ease-out, r 0.12s ease-out, fill 0.2s ease;
+  will-change: cx, cy;
+}
+
+.token-g-moveable {
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.token-g-moveable:hover {
+  transform: scale(1.1);
+}
+

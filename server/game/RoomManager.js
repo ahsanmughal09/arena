@@ -212,6 +212,21 @@ class RoomManager {
         return;
       }
 
+      // If in Appeal Demo mode, countdown the demo timer
+      if (room.engine.appealState && room.engine.appealState.inDemo) {
+        room.engine.appealState.demoTimeLeft = Math.max(0, (room.engine.appealState.demoTimeLeft || 10) - 1);
+        this.io.to(room.code).emit('GAME_STATE_UPDATE', { state: room.engine.getGameState() });
+
+        if (room.engine.appealState.demoTimeLeft <= 0) {
+          const appealingColor = room.engine.appealState.appealingColor;
+          room.engine.failAppeal(appealingColor);
+          room.engine.finishTurn();
+          this.resetTimer(room);
+          this.io.to(room.code).emit('GAME_STATE_UPDATE', { state: room.engine.getGameState() });
+        }
+        return;
+      }
+
       room.timeLeft--;
       this.io.to(room.code).emit('TIMER_TICK', { timeLeft: room.timeLeft });
 

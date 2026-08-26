@@ -424,7 +424,7 @@ export default function Board6P({ gameState, myColor, onMoveToken, onOpenThrowMe
           }, 150);
         }
       }
-    }, 120);
+    }, 90);
 
     return () => {
       clearInterval(stepInterval);

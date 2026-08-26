@@ -203,7 +203,7 @@ io.on('connection', (socket) => {
           // Check for next forced auto-move on remaining dice in pool
           checkAndTriggerSmartAutoMove(room, roomCode);
         }
-      }, 400);
+      }, 650);
     }
   }
 

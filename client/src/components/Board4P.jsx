@@ -481,7 +481,7 @@ export default function Board4P({ gameState, myColor, onMoveToken, onOpenThrowMe
           }, 150);
         }
       }
-    }, 120);
+    }, 90);
 
     return () => {
       clearTimeout(timer);

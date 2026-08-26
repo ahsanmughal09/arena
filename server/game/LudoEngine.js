@@ -800,12 +800,12 @@ class LudoEngine {
     this.validMoves = [];
     let nextIdx = (this.activePlayerIndex + 1) % this.colors.length;
 
-    // Loop until we find a player who hasn't fully finished all tokens (if game still running)
+    // Loop until we find a CONNECTED player who hasn't fully finished all tokens
     let attempts = 0;
     while (attempts < this.colors.length) {
       const nextColor = this.colors[nextIdx];
       const p = this.players[nextColor];
-      if (p && !p.tokens.every(s => s === this.finishStep)) {
+      if (p && p.connected !== false && !p.tokens.every(s => s === this.finishStep)) {
         this.activePlayerIndex = nextIdx;
         return;
       }
