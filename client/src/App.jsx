@@ -11,6 +11,7 @@ import VictoryModal from './components/VictoryModal';
 import AppealOverlay from './components/AppealOverlay';
 import ThrowableOverlay from './components/ThrowableOverlay';
 import ThrowablePickerModal from './components/ThrowablePickerModal';
+import ExtraTurnBanner from './components/ExtraTurnBanner';
 
 export default function App() {
   const [view, setView] = useState('home'); // 'home', 'lobby', 'game'
@@ -26,6 +27,9 @@ export default function App() {
   const [activeThrows, setActiveThrows] = useState([]);
   const [throwTarget, setThrowTarget] = useState(null);
 
+  // Extra Turn Notification State
+  const [extraTurnNotice, setExtraTurnNotice] = useState(null);
+
   useEffect(() => {
     // Socket Event Listeners
     socket.on('ROOM_UPDATED', ({ slots: newSlots, settings: newSettings }) => {
@@ -39,17 +43,40 @@ export default function App() {
       setView('game');
     });
 
-    socket.on('DICE_ROLLED', ({ color, state }) => {
+    socket.on('DICE_ROLLED', ({ color, roll, state }) => {
       setGameState(state);
       if (color === myColor) {
         sounds.playDiceRoll();
       }
+      if (roll === 6) {
+        setExtraTurnNotice({
+          color,
+          title: 'EXTRA ROLL!',
+          subtitle: `${color.toUpperCase()} rolled a 6! 🎲`,
+          icon: '🎲'
+        });
+      }
     });
 
-    socket.on('TOKEN_MOVED', ({ moveRes, state }) => {
+    socket.on('TOKEN_MOVED', ({ color, moveRes, state }) => {
       setGameState(state);
-      if (moveRes && moveRes.action && moveRes.action.captured) {
+      const action = moveRes?.action || moveRes?.moveRes?.action;
+      if (action && action.captured) {
         sounds.playCapture();
+        setExtraTurnNotice({
+          color: color || action.color,
+          title: 'EXTRA TURN!',
+          subtitle: `${(color || action.color).toUpperCase()} captured an opponent! ⚔️`,
+          icon: '⚔️'
+        });
+      } else if (action && action.reachesHome) {
+        sounds.playTokenStep();
+        setExtraTurnNotice({
+          color: color || action.color,
+          title: 'EXTRA TURN!',
+          subtitle: `${(color || action.color).toUpperCase()}'s token reached Home! 🏠`,
+          icon: '🏠'
+        });
       } else {
         sounds.playTokenStep();
       }
@@ -261,6 +288,9 @@ export default function App() {
       
       {/* Global Throwable Items Flight & Splat Overlay */}
       <ThrowableOverlay activeThrows={activeThrows} />
+
+      {/* Extra Turn Notification Banner */}
+      <ExtraTurnBanner notice={extraTurnNotice} onClose={() => setExtraTurnNotice(null)} />
 
       {/* Throwable Item Picker Modal */}
       {throwTarget && (
