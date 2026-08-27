@@ -93,11 +93,18 @@ export default function App() {
           icon: '🚫',
           isPenalty: true
         });
-      } else if (roll === 6 || (Array.isArray(roll) && roll.includes(6))) {
+      } else if (!Array.isArray(roll) && roll === 6) {
         setExtraTurnNotice({
           color,
           title: 'EXTRA ROLL!',
           subtitle: `${color.toUpperCase()} rolled a 6! 🎲`,
+          icon: '🎲'
+        });
+      } else if (Array.isArray(roll) && roll.length === 2 && roll[0] === 6 && roll[1] === 6) {
+        setExtraTurnNotice({
+          color,
+          title: 'EXTRA ROLL!',
+          subtitle: `${color.toUpperCase()} rolled Double 6s! 🎲🎲`,
           icon: '🎲'
         });
       }
@@ -481,7 +488,15 @@ export default function App() {
 
           {/* Victory Modal */}
           {gameState.gameOver && (
-            <VictoryModal winner={gameState.winner} onPlayAgain={handlePlayAgain} />
+            <VictoryModal 
+              winner={gameState.winner} 
+              players={gameState.players}
+              colors={gameState.colors}
+              teams={gameState.teams}
+              finishStep={gameState.finishStep || (gameState.mode === '6P' ? 76 : 56)}
+              myColor={myColor}
+              onPlayAgain={handlePlayAgain} 
+            />
           )}
 
         </div>
