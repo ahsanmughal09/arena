@@ -164,6 +164,18 @@ io.on('connection', (socket) => {
         state: room.engine.getGameState()
       });
 
+      if (rollRes.penalty) {
+        const isFourSixes = Array.isArray(rollRes.roll) && rollRes.roll.length === 2;
+        const penaltyText = isFourSixes 
+          ? `🚫 ${info.color.toUpperCase()} rolled 4 consecutive sixes! Turn cancelled & all rolls lost!` 
+          : `🚫 ${info.color.toUpperCase()} rolled 3 consecutive sixes! Turn cancelled & all rolls lost!`;
+
+        io.to(roomCode).emit('CHAT_MESSAGE', {
+          sender: 'System',
+          text: penaltyText
+        });
+      }
+
       // If rolling phase is done (canRoll === false), NOT a penalty, and NO valid moves exist for any roll in pool
       if (!rollRes.penalty && !rollRes.canRoll && rollRes.validMoves.length === 0) {
         setTimeout(() => {

@@ -76,12 +76,24 @@ export default function App() {
       setView('game');
     });
 
-    socket.on('DICE_ROLLED', ({ color, roll, state }) => {
+    socket.on('DICE_ROLLED', ({ color, roll, penalty, state }) => {
       setGameState(state);
       if (color === myColor) {
         sounds.playDiceRoll();
       }
-      if (roll === 6) {
+
+      if (penalty) {
+        const isFourSixes = Array.isArray(roll) && roll.length === 2;
+        setExtraTurnNotice({
+          color,
+          title: '🚫 TURN CANCELLED!',
+          subtitle: isFourSixes 
+            ? `4 Consecutive Sixes! Turn cancelled & all rolls lost for ${color.toUpperCase()}! 🚫`
+            : `3 Consecutive Sixes! Turn cancelled & all rolls lost for ${color.toUpperCase()}! 🚫`,
+          icon: '🚫',
+          isPenalty: true
+        });
+      } else if (roll === 6 || (Array.isArray(roll) && roll.includes(6))) {
         setExtraTurnNotice({
           color,
           title: 'EXTRA ROLL!',

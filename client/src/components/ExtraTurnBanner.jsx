@@ -4,10 +4,14 @@ import { sounds } from '../utils/audio';
 export default function ExtraTurnBanner({ notice, onClose }) {
   useEffect(() => {
     if (notice) {
-      sounds.playExtraTurn();
+      if (notice.isPenalty) {
+        sounds.playCapture();
+      } else {
+        sounds.playExtraTurn();
+      }
       const timer = setTimeout(() => {
         if (onClose) onClose();
-      }, 2400);
+      }, 2600);
       return () => clearTimeout(timer);
     }
   }, [notice]);
@@ -23,7 +27,10 @@ export default function ExtraTurnBanner({ notice, onClose }) {
     purple: '#A55EEA'
   };
 
-  const mainHex = colorHexMap[notice.color] || '#818CF8';
+  const mainHex = notice.isPenalty ? '#EF4444' : (colorHexMap[notice.color] || '#818CF8');
+  const bgGradient = notice.isPenalty 
+    ? 'linear-gradient(135deg, #DC2626 0%, #7F1D1D 100%)' 
+    : `linear-gradient(135deg, ${mainHex}, #0F172A)`;
 
   return (
     <div style={{
@@ -36,21 +43,23 @@ export default function ExtraTurnBanner({ notice, onClose }) {
       animation: 'extraTurnBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards'
     }}>
       <div style={{
-        background: `linear-gradient(135deg, ${mainHex}, #0F172A)`,
+        background: bgGradient,
         border: `2px solid ${mainHex}`,
         borderRadius: '50px',
         padding: '10px 24px',
         display: 'flex',
         alignItems: 'center',
         gap: '12px',
-        boxShadow: `0 10px 30px rgba(0,0,0,0.8), 0 0 25px ${mainHex}90`,
+        boxShadow: notice.isPenalty 
+          ? '0 10px 30px rgba(220, 38, 38, 0.6), 0 0 25px rgba(239, 68, 68, 0.8)' 
+          : `0 10px 30px rgba(0,0,0,0.8), 0 0 25px ${mainHex}90`,
         color: '#FFF'
       }}>
         <div style={{
           fontSize: '2rem',
           animation: 'spinPulse 0.8s ease-in-out infinite alternate'
         }}>
-          {notice.icon || '🔥'}
+          {notice.icon || (notice.isPenalty ? '🚫' : '🔥')}
         </div>
 
         <div>
@@ -59,14 +68,14 @@ export default function ExtraTurnBanner({ notice, onClose }) {
             fontWeight: 900,
             letterSpacing: '1.5px',
             textTransform: 'uppercase',
-            background: 'linear-gradient(135deg, #FFF, #FCD34D)',
+            background: notice.isPenalty ? 'linear-gradient(135deg, #FFF, #FECACA)' : 'linear-gradient(135deg, #FFF, #FCD34D)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))'
           }}>
-            {notice.title || 'EXTRA TURN!'}
+            {notice.title || (notice.isPenalty ? '🚫 TURN CANCELLED!' : 'EXTRA TURN!')}
           </div>
-          <div style={{ fontSize: '0.8rem', color: '#E2E8F0', fontWeight: 600 }}>
+          <div style={{ fontSize: '0.82rem', color: notice.isPenalty ? '#FCA5A5' : '#E2E8F0', fontWeight: 700 }}>
             {notice.subtitle}
           </div>
         </div>
