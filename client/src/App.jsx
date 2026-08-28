@@ -13,6 +13,16 @@ import ThrowableOverlay from './components/ThrowableOverlay';
 import ThrowablePickerModal from './components/ThrowablePickerModal';
 import ExtraTurnBanner from './components/ExtraTurnBanner';
 import ConfirmModal from './components/ConfirmModal';
+import { MessageSquare, X } from 'lucide-react';
+
+const COLOR_HEX_CHIP = {
+  red: '#FF4757',
+  green: '#2ED573',
+  yellow: '#FFA502',
+  blue: '#1E90FF',
+  orange: '#FF6B81',
+  purple: '#A55EEA'
+};
 
 export default function App() {
   const [view, setView] = useState('home'); // 'home', 'lobby', 'game'
@@ -23,6 +33,8 @@ export default function App() {
   const [gameState, setGameState] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [timeLeft, setTimeLeft] = useState(30);
+  const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
 
   // Throwable Items State
   const [activeThrows, setActiveThrows] = useState([]);
@@ -124,6 +136,12 @@ export default function App() {
 
     socket.on('CHAT_MESSAGE', (msg) => {
       setChatMessages((prev) => [...prev, msg]);
+      setIsMobileChatOpen((open) => {
+        if (!open) {
+          setUnreadChatCount((count) => count + 1);
+        }
+        return open;
+      });
     });
 
     // Appeal System Listeners
@@ -375,32 +393,31 @@ export default function App() {
 
       {/* Active Game View */}
       {view === 'game' && gameState && (
-        <div style={{ position: 'relative', height: '100vh', maxHeight: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '4px 10px', boxSizing: 'border-box', gap: '6px' }}>
+        <div className="game-screen-container">
           
           {/* Top Bar / Header */}
-          <div className="glass-panel" style={{ padding: '6px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-              <h2 style={{ fontSize: '1.2rem', fontWeight: 800, background: 'linear-gradient(135deg, #FFF, #818CF8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                LUDO {gameState.mode} ({gameState.teamMode.toUpperCase()})
+          <div className="glass-panel game-top-bar">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <h2 style={{ fontSize: '1.15rem', fontWeight: 800, background: 'linear-gradient(135deg, #FFF, #818CF8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                LUDO {gameState.mode}
               </h2>
-              <span style={{ fontSize: '0.8rem', color: '#CBD5E1', background: 'rgba(255,255,255,0.08)', padding: '3px 10px', borderRadius: '10px' }}>
+              <span style={{ fontSize: '0.75rem', color: '#CBD5E1', background: 'rgba(255,255,255,0.08)', padding: '2px 8px', borderRadius: '8px' }}>
                 Room: <strong style={{ color: '#818CF8' }}>{roomCode}</strong>
               </span>
               {gameState.customRules?.diceCount === 2 && (
-                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#2ED573', background: 'rgba(46, 213, 115, 0.15)', border: '1px solid rgba(46, 213, 115, 0.3)', padding: '2px 8px', borderRadius: '8px' }}>
-                  🎲 2 Dice Mode
+                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#2ED573', background: 'rgba(46, 213, 115, 0.15)', border: '1px solid rgba(46, 213, 115, 0.3)', padding: '1px 6px', borderRadius: '6px' }}>
+                  🎲 2 Dice
                 </span>
               )}
               {gameState.customRules?.killRequiredToEnterHome && (
-                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#FFA502', background: 'rgba(255, 165, 2, 0.15)', border: '1px solid rgba(255, 165, 2, 0.3)', padding: '2px 8px', borderRadius: '8px' }}>
-                  🎯 Kill Required for Home
+                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#FFA502', background: 'rgba(255, 165, 2, 0.15)', border: '1px solid rgba(255, 165, 2, 0.3)', padding: '1px 6px', borderRadius: '6px' }}>
+                  🎯 Kill Req
                 </span>
               )}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '0.8rem', color: '#94A3B8' }}>Your Color:</span>
-              <span style={{ fontWeight: 700, color: `#${myColor}`, background: 'rgba(30, 41, 59, 0.8)', padding: '3px 10px', borderRadius: '10px', textTransform: 'uppercase', fontSize: '0.85rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontWeight: 800, color: `#${myColor}`, background: 'rgba(30, 41, 59, 0.8)', border: `1px solid ${COLOR_HEX_CHIP[myColor] || 'rgba(255,255,255,0.2)'}`, padding: '2px 8px', borderRadius: '8px', textTransform: 'uppercase', fontSize: '0.75rem' }}>
                 {myColor}
               </span>
               <button 
@@ -410,13 +427,13 @@ export default function App() {
                   border: '1px solid rgba(239, 68, 68, 0.5)',
                   color: '#EF4444',
                   fontWeight: 700,
-                  fontSize: '0.8rem',
-                  padding: '4px 10px',
-                  borderRadius: '10px',
+                  fontSize: '0.75rem',
+                  padding: '3px 8px',
+                  borderRadius: '8px',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '4px',
+                  gap: '3px',
                   transition: 'all 0.2s ease'
                 }}
               >
@@ -425,11 +442,11 @@ export default function App() {
             </div>
           </div>
 
-          {/* Main Game Layout (3-Column Layout: Left Chat | Center Board | Right Controls & Appeals) */}
-          <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr 240px', gap: '14px', flex: 1, minHeight: 0, alignItems: 'center' }}>
+          {/* Main Game Layout (Responsive Grid: 3-Column on Desktop | Centered Stack on Mobile) */}
+          <div className="game-main-layout">
             
-            {/* Left Column: Room Chat & Emote Reactions */}
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+            {/* Left Column: Desktop Chat */}
+            <div className="desktop-chat-col">
               <ChatPanel 
                 roomCode={roomCode}
                 socket={socket}
@@ -438,8 +455,8 @@ export default function App() {
               />
             </div>
 
-            {/* Center Column: Interactive Board with Integrated Yard Participant Info */}
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: 0 }}>
+            {/* Center Column: Interactive Responsive Board */}
+            <div className="center-board-col">
               {gameState.mode === '4P' ? (
                 <Board4P gameState={gameState} myColor={myColor} onMoveToken={handleMoveToken} onOpenThrowMenu={handleOpenThrowMenu} onActionComplete={handleBoardActionComplete} />
               ) : (
@@ -447,8 +464,8 @@ export default function App() {
               )}
             </div>
 
-            {/* Right Column: Dice Roller (Top Right) + Appeal Section (Middle Right) */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%', minHeight: 0, justifyContent: 'flex-start' }}>
+            {/* Right Column: Desktop Controls */}
+            <div className="right-controls-col">
               
               {/* Dice Roller */}
               <div className="glass-panel" style={{ padding: '14px', display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
@@ -484,7 +501,152 @@ export default function App() {
 
             </div>
 
+            {/* Mobile Bottom Dock (Active on Mobile/Tablet <= 1024px) */}
+            <div className="mobile-bottom-dock">
+              {/* Chat Toggle Button */}
+              <button
+                onClick={() => {
+                  setIsMobileChatOpen(true);
+                  setUnreadChatCount(0);
+                }}
+                style={{
+                  position: 'relative',
+                  background: 'rgba(30, 41, 59, 0.85)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  borderRadius: '12px',
+                  color: '#FFF',
+                  padding: '6px 10px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '2px',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  minWidth: '48px'
+                }}
+              >
+                <MessageSquare size={16} color="#818CF8" />
+                <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#CBD5E1' }}>Chat</span>
+                {unreadChatCount > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '-4px',
+                    right: '-4px',
+                    background: '#EF4444',
+                    color: '#FFF',
+                    fontSize: '0.6rem',
+                    fontWeight: 900,
+                    padding: '1px 5px',
+                    borderRadius: '10px',
+                    boxShadow: '0 0 6px rgba(239, 68, 68, 0.8)'
+                  }}>
+                    {unreadChatCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Center Compact Dice Roller */}
+              <div style={{ flex: 1, display: 'flex', justifyContent: 'center', minWidth: 0 }}>
+                <DiceRoller 
+                  currentDice={gameState.currentDice}
+                  dicePool={gameState.dicePool}
+                  selectedRollIndex={gameState.selectedRollIndex}
+                  canRoll={gameState.canRoll}
+                  isMyTurn={isMyTurn}
+                  activeColor={gameState.activeColor}
+                  onRollDice={handleRollDice}
+                  onSelectRoll={handleSelectRoll}
+                  diceCount={gameState.customRules?.diceCount || 1}
+                  allTokensInHome={gameState.allTokensInHome}
+                  isHomeDiceSelectionMode={gameState.isHomeDiceSelectionMode}
+                  timeLeft={timeLeft}
+                  maxTime={gameState.turnTimer || 30}
+                  compact={true}
+                />
+              </div>
+
+              {/* Mobile Appeal Button */}
+              {(gameState.canAppealLastTurn || gameState.appealState?.inDemo) && (
+                <button
+                  onClick={handleSubmitAppeal}
+                  style={{
+                    background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                    border: '1px solid #FCD34D',
+                    borderRadius: '12px',
+                    color: '#FFF',
+                    padding: '6px 8px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '2px',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    minWidth: '48px',
+                    boxShadow: '0 0 12px rgba(245, 158, 11, 0.5)',
+                    animation: 'pulse 1s infinite'
+                  }}
+                >
+                  <span style={{ fontSize: '0.9rem' }}>⚖️</span>
+                  <span style={{ fontSize: '0.6rem', fontWeight: 900 }}>Appeal</span>
+                </button>
+              )}
+            </div>
+
           </div>
+
+          {/* Mobile Chat Sliding Drawer Modal */}
+          {isMobileChatOpen && (
+            <div 
+              className="mobile-drawer-backdrop" 
+              onClick={() => setIsMobileChatOpen(false)}
+            >
+              <div 
+                className="mobile-drawer-content" 
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div style={{
+                  padding: '10px 16px',
+                  background: 'rgba(15, 23, 42, 0.8)',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.15)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <MessageSquare size={18} color="#818CF8" />
+                    <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#FFF' }}>Room Chat & Reactions</span>
+                  </div>
+                  <button
+                    onClick={() => setIsMobileChatOpen(false)}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.1)',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: '28px',
+                      height: '28px',
+                      color: '#FFF',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                  <ChatPanel 
+                    roomCode={roomCode}
+                    socket={socket}
+                    chatMessages={chatMessages}
+                    myColor={myColor}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Victory Modal */}
           {gameState.gameOver && (

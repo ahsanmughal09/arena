@@ -598,11 +598,13 @@ export default function Board4P({ gameState, myColor, onMoveToken, onOpenThrowMe
   return (
     <div
       onClick={() => setActivePopup(null)}
+      className="board-4p-wrapper"
       style={{
         position: 'relative',
         width: '100%',
         height: '100%',
-        maxHeight: 'calc(100vh - 55px)',
+        maxWidth: '100%',
+        maxHeight: '100%',
         aspectRatio: '1 / 1',
         display: 'flex',
         justifyContent: 'center',
@@ -612,14 +614,17 @@ export default function Board4P({ gameState, myColor, onMoveToken, onOpenThrowMe
     >
       <svg
         viewBox="0 0 600 600"
+        preserveAspectRatio="xMidYMid meet"
         style={{
           width: '100%',
           height: '100%',
-          maxHeight: 'calc(100vh - 55px)',
-          borderRadius: '20px',
+          maxWidth: '100%',
+          maxHeight: '100%',
+          borderRadius: '16px',
           background: 'radial-gradient(circle at center, #1E293B 0%, #0F172A 100%)',
           border: '2px solid rgba(99, 102, 241, 0.4)',
-          boxShadow: '0 20px 50px rgba(0,0,0,0.6), inset 0 0 30px rgba(99, 102, 241, 0.15)'
+          boxShadow: '0 12px 35px rgba(0,0,0,0.6), inset 0 0 30px rgba(99, 102, 241, 0.15)',
+          touchAction: 'manipulation'
         }}
       >
 
@@ -735,7 +740,16 @@ export default function Board4P({ gameState, myColor, onMoveToken, onOpenThrowMe
                 handleTokenClick(tok.color, tok.tIdx, cx, cy);
               }}
               className={isMoveable ? 'token-g-moveable' : ''}
+              style={{ cursor: isMoveable ? 'pointer' : 'default' }}
             >
+              {/* Expanded Touch Target for Mobile */}
+              <circle
+                cx={cx}
+                cy={cy}
+                r={Math.max(r + 10, 20)}
+                fill="transparent"
+                style={{ pointerEvents: isMoveable ? 'all' : 'none' }}
+              />
               {/* Outer Pulsing Ring for Moveable Tokens */}
               {isMoveable && (
                 <circle
@@ -775,21 +789,21 @@ export default function Board4P({ gameState, myColor, onMoveToken, onOpenThrowMe
         {/* Contextual Roll Selection Popover near clicked token */}
         {activePopup && (
           <g
-            transform={`translate(${activePopup.coords.x}, ${Math.max(30, activePopup.coords.y - 36)})`}
+            transform={`translate(${activePopup.coords.x}, ${Math.max(32, activePopup.coords.y - 40)})`}
           >
             <rect
-              x={- (activePopup.options.length * 38 + 12) / 2}
-              y="-18"
-              width={activePopup.options.length * 38 + 12}
-              height="36"
-              rx="18"
+              x={- (activePopup.options.length * 42 + 14) / 2}
+              y="-20"
+              width={activePopup.options.length * 42 + 14}
+              height="40"
+              rx="20"
               fill="#0F172A"
               stroke="#6366F1"
-              strokeWidth="2"
-              filter="drop-shadow(0 8px 16px rgba(0,0,0,0.7))"
+              strokeWidth="2.5"
+              filter="drop-shadow(0 10px 20px rgba(0,0,0,0.8))"
             />
             {activePopup.options.map((opt, idx) => {
-              const btnX = - (activePopup.options.length * 38) / 2 + idx * 38 + 19;
+              const btnX = - (activePopup.options.length * 42) / 2 + idx * 42 + 21;
               return (
                 <g
                   key={`opt-${idx}`}
@@ -801,8 +815,9 @@ export default function Board4P({ gameState, myColor, onMoveToken, onOpenThrowMe
                   }}
                   style={{ cursor: 'pointer' }}
                 >
-                  <circle cx={btnX} cy="0" r="14" fill={opt.val === 6 ? '#22C55E' : '#6366F1'} stroke="#FFFFFF" strokeWidth="1.5" />
-                  <text x={btnX} y="4" fill="#FFFFFF" fontSize="12" fontWeight="bold" textAnchor="middle">{opt.val}</text>
+                  <circle cx={btnX} cy="0" r="18" fill="transparent" />
+                  <circle cx={btnX} cy="0" r="15" fill={opt.val === 6 ? '#22C55E' : '#6366F1'} stroke="#FFFFFF" strokeWidth="1.5" />
+                  <text x={btnX} y="4.5" fill="#FFFFFF" fontSize="13" fontWeight="bold" textAnchor="middle">{opt.val}</text>
                 </g>
               );
             })}
