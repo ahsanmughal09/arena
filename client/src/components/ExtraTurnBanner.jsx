@@ -11,7 +11,7 @@ export default function ExtraTurnBanner({ notice, onClose }) {
       }
       const timer = setTimeout(() => {
         if (onClose) onClose();
-      }, 2600);
+      }, 1700);
       return () => clearTimeout(timer);
     }
   }, [notice]);
@@ -28,57 +28,76 @@ export default function ExtraTurnBanner({ notice, onClose }) {
   };
 
   const mainHex = notice.isPenalty ? '#EF4444' : (colorHexMap[notice.color] || '#818CF8');
-  const bgGradient = notice.isPenalty 
-    ? 'linear-gradient(135deg, #DC2626 0%, #7F1D1D 100%)' 
-    : `linear-gradient(135deg, ${mainHex}, #0F172A)`;
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: '70px',
-      left: '50%',
-      transform: 'translateX(-50%)',
-      zIndex: 9995,
-      pointerEvents: 'none',
-      animation: 'extraTurnBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards'
-    }}>
-      <div style={{
-        background: bgGradient,
-        border: `2px solid ${mainHex}`,
-        borderRadius: '50px',
-        padding: '10px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-        boxShadow: notice.isPenalty 
-          ? '0 10px 30px rgba(220, 38, 38, 0.6), 0 0 25px rgba(239, 68, 68, 0.8)' 
-          : `0 10px 30px rgba(0,0,0,0.8), 0 0 25px ${mainHex}90`,
-        color: '#FFF'
-      }}>
-        <div style={{
-          fontSize: '2rem',
-          animation: 'spinPulse 0.8s ease-in-out infinite alternate'
+    <div 
+      style={{
+        position: 'fixed',
+        top: '10px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 9999,
+        pointerEvents: 'none',
+        animation: 'extraTurnSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        maxWidth: '92vw',
+        userSelect: 'none'
+      }}
+    >
+      <div 
+        style={{
+          background: notice.isPenalty 
+            ? 'linear-gradient(135deg, rgba(127, 29, 29, 0.95), rgba(69, 10, 10, 0.98))' 
+            : 'linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.96))',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: `1.5px solid ${mainHex}`,
+          borderRadius: '30px',
+          padding: '5px 14px',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '8px',
+          boxShadow: notice.isPenalty 
+            ? '0 6px 20px rgba(239, 68, 68, 0.5), 0 0 12px rgba(220, 38, 38, 0.4)' 
+            : `0 6px 20px rgba(0,0,0,0.7), 0 0 14px ${mainHex}70`,
+          color: '#FFF',
+          pointerEvents: 'none',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis'
+        }}
+      >
+        <span style={{
+          fontSize: '1.1rem',
+          lineHeight: 1,
+          animation: 'spinPulse 0.6s ease-in-out infinite alternate',
+          pointerEvents: 'none',
+          flexShrink: 0
         }}>
           {notice.icon || (notice.isPenalty ? '🚫' : '🔥')}
-        </div>
+        </span>
 
-        <div>
-          <div style={{
-            fontSize: '1.1rem',
-            fontWeight: 900,
-            letterSpacing: '1.5px',
-            textTransform: 'uppercase',
-            background: notice.isPenalty ? 'linear-gradient(135deg, #FFF, #FECACA)' : 'linear-gradient(135deg, #FFF, #FCD34D)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))'
-          }}>
-            {notice.title || (notice.isPenalty ? '🚫 TURN CANCELLED!' : 'EXTRA TURN!')}
-          </div>
-          <div style={{ fontSize: '0.82rem', color: notice.isPenalty ? '#FCA5A5' : '#E2E8F0', fontWeight: 700 }}>
-            {notice.subtitle}
-          </div>
-        </div>
+        <span style={{
+          fontSize: '0.8rem',
+          fontWeight: 900,
+          letterSpacing: '0.5px',
+          textTransform: 'uppercase',
+          color: notice.isPenalty ? '#FCA5A5' : mainHex,
+          pointerEvents: 'none',
+          flexShrink: 0
+        }}>
+          {notice.title || (notice.isPenalty ? 'CANCELLED' : 'EXTRA TURN')}
+        </span>
+
+        <span style={{
+          fontSize: '0.75rem',
+          color: '#E2E8F0',
+          fontWeight: 600,
+          pointerEvents: 'none',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis'
+        }}>
+          • {notice.subtitle}
+        </span>
       </div>
     </div>
   );

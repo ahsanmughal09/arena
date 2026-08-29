@@ -194,40 +194,66 @@ function getOccupantOffset(occupantIndex, totalOccupants) {
   return { ...offsets[occupantIndex % 4], r: 8.5 };
 }
 
-function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 56, killRequired = false, gameState = null, color = null) {
-  if (!player || !player.tokens || !dicePool || dicePool.length === 0) return [];
-  const step = player.tokens[tokenIndex];
-  if (step === undefined) return [];
+function canTokenMoveWithRoll4P(step, roll, killRequired, hasKill, color, gameState) {
+  if (step === undefined || step === null || roll === undefined || roll === null) return false;
+  if (step === -1) return roll === 6;
+  if (step === 56) return false; // already in home finished
+  if (step >= 51) return (step + roll <= 56);
 
-  const outerLen = 51;
-  const lastSafeStep = 47;
-  const hasKill = ((player.kills || 0) > 0);
+  const targetStep = step + roll;
+  if (!killRequired || hasKill) {
+    return targetStep <= 56;
+  } else {
+    if (targetStep <= 47) return true;
+    if (targetStep < 51) {
+      if (gameState && gameState.players && color) {
+        const startPos = color === 'red' ? 0 : color === 'green' ? 13 : color === 'yellow' ? 26 : 39;
+        const targetAbs = (startPos + targetStep) % 52;
+        const safeSpots = [0, 8, 13, 21, 26, 34, 39, 47];
+        if (!safeSpots.includes(targetAbs)) {
+          let hasOpponent = false;
+          Object.keys(gameState.players).forEach(otherColor => {
+            if (otherColor !== color) {
+              const otherPlayer = gameState.players[otherColor];
+              if (otherPlayer && otherPlayer.tokens) {
+                const otherStart = otherColor === 'red' ? 0 : otherColor === 'green' ? 13 : otherColor === 'yellow' ? 26 : 39;
+                otherPlayer.tokens.forEach(otherStep => {
+                  if (otherStep >= 0 && otherStep < 51) {
+                    const otherAbs = (otherStart + otherStep) % 52;
+                    if (otherAbs === targetAbs) hasOpponent = true;
+                  }
+                });
+              }
+            }
+          });
+          if (hasOpponent) return true;
+        }
+      }
+    }
+    return false;
+  }
+}
 
-  const options = [];
-  const seenValues = new Set();
+function canConsumeAllDice4P(currentTokens, remainingDicePool, hasKill, killRequired, color, gameState) {
+  if (remainingDicePool.length === 0) return true;
 
-  dicePool.forEach((roll, rIdx) => {
-    let isValid = false;
-    if (step === -1) {
-      if (roll === 6) isValid = true;
-    } else if (step >= outerLen) {
-      if (step + roll <= finishStep) isValid = true;
-    } else {
-      const targetStep = step + roll;
-      if (!killRequired || hasKill) {
-        if (targetStep <= finishStep) isValid = true;
-      } else {
-        if (targetStep <= lastSafeStep) {
-          isValid = true;
-        } else if (targetStep < outerLen) {
-          // Check if landing on opponent token to kill it!
-          if (gameState && gameState.players && color) {
-            const startPos = color === 'red' ? 0 : color === 'green' ? 13 : color === 'yellow' ? 26 : 39;
-            const targetAbs = (startPos + targetStep) % 52;
-            const safeSpots = [0, 8, 13, 21, 26, 34, 39, 47];
+  for (let rIdx = 0; rIdx < remainingDicePool.length; rIdx++) {
+    const roll = remainingDicePool[rIdx];
+    for (let tIdx = 0; tIdx < currentTokens.length; tIdx++) {
+      const step = currentTokens[tIdx];
+      if (canTokenMoveWithRoll4P(step, roll, killRequired, hasKill, color, gameState)) {
+        const nextStep = (step === -1) ? 0 : (step + roll);
+        const nextTokens = [...currentTokens];
+        nextTokens[tIdx] = nextStep;
 
-            if (!safeSpots.includes(targetAbs)) {
-              let hasOpponent = false;
+        let nextHasKill = hasKill;
+        if (!hasKill && nextStep >= 0 && nextStep < 51) {
+          const startPos = color === 'red' ? 0 : color === 'green' ? 13 : color === 'yellow' ? 26 : 39;
+          const targetAbs = (startPos + nextStep) % 52;
+          const safeSpots = [0, 8, 13, 21, 26, 34, 39, 47];
+          if (!safeSpots.includes(targetAbs)) {
+            let hasOpponent = false;
+            if (gameState && gameState.players) {
               Object.keys(gameState.players).forEach(otherColor => {
                 if (otherColor !== color) {
                   const otherPlayer = gameState.players[otherColor];
@@ -242,18 +268,74 @@ function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 
                   }
                 }
               });
-              if (hasOpponent) isValid = true;
             }
+            if (hasOpponent) nextHasKill = true;
           }
+        }
+
+        const nextPool = remainingDicePool.slice(0, rIdx).concat(remainingDicePool.slice(rIdx + 1));
+        if (canConsumeAllDice4P(nextTokens, nextPool, nextHasKill, killRequired, color, gameState)) {
+          return true;
         }
       }
     }
+  }
+  return false;
+}
 
-    if (isValid && !seenValues.has(roll)) {
-      seenValues.add(roll);
-      options.push({ rollIndex: rIdx, val: roll });
+function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 56, killRequired = false, gameState = null, color = null) {
+  if (!player || !player.tokens || !dicePool || dicePool.length === 0) return [];
+  const currentTokens = [...player.tokens];
+  const step = currentTokens[tokenIndex];
+  if (step === undefined) return [];
+
+  const hasKill = ((player.kills || 0) > 0);
+  const options = [];
+  const seenValues = new Set();
+
+  for (let rIdx = 0; rIdx < dicePool.length; rIdx++) {
+    const roll = dicePool[rIdx];
+    if (canTokenMoveWithRoll4P(step, roll, killRequired, hasKill, color, gameState)) {
+      const nextStep = (step === -1) ? 0 : (step + roll);
+      const nextTokens = [...currentTokens];
+      nextTokens[tokenIndex] = nextStep;
+
+      let nextHasKill = hasKill;
+      if (!hasKill && nextStep >= 0 && nextStep < 51) {
+        const startPos = color === 'red' ? 0 : color === 'green' ? 13 : color === 'yellow' ? 26 : 39;
+        const targetAbs = (startPos + nextStep) % 52;
+        const safeSpots = [0, 8, 13, 21, 26, 34, 39, 47];
+        if (!safeSpots.includes(targetAbs)) {
+          let hasOpponent = false;
+          if (gameState && gameState.players) {
+            Object.keys(gameState.players).forEach(otherColor => {
+              if (otherColor !== color) {
+                const otherPlayer = gameState.players[otherColor];
+                if (otherPlayer && otherPlayer.tokens) {
+                  const otherStart = otherColor === 'red' ? 0 : otherColor === 'green' ? 13 : otherColor === 'yellow' ? 26 : 39;
+                  otherPlayer.tokens.forEach(otherStep => {
+                    if (otherStep >= 0 && otherStep < 51) {
+                      const otherAbs = (otherStart + otherStep) % 52;
+                      if (otherAbs === targetAbs) hasOpponent = true;
+                    }
+                  });
+                }
+              }
+            });
+          }
+          if (hasOpponent) nextHasKill = true;
+        }
+      }
+
+      const nextPool = dicePool.slice(0, rIdx).concat(dicePool.slice(rIdx + 1));
+      if (canConsumeAllDice4P(nextTokens, nextPool, nextHasKill, killRequired, color, gameState)) {
+        if (!seenValues.has(roll)) {
+          seenValues.add(roll);
+          options.push({ rollIndex: rIdx, val: roll });
+        }
+      }
     }
-  });
+  }
 
   return options;
 }

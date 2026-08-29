@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, Shield, Timer, Play, LogIn } from 'lucide-react';
+import { Shield, Timer, Play, LogIn } from 'lucide-react';
 import { sounds } from '../utils/audio';
 
 export default function HomeLobby({ onCreateRoom, onJoinRoom, showAlert }) {
@@ -7,9 +7,9 @@ export default function HomeLobby({ onCreateRoom, onJoinRoom, showAlert }) {
   const [joinCode, setJoinCode] = useState('');
   const [tab, setTab] = useState('create'); // 'create' or 'join'
   
-  // Settings for Create Room
-  const [mode, setMode] = useState('4P'); // '4P' or '6P'
-  const [teamMode, setTeamMode] = useState('2v2'); // 4P: 'solo', '2v2' | 6P: 'solo', '3v3', '2v2v2'
+  // Settings for Create Room (Locked to 4P)
+  const [mode] = useState('4P');
+  const [teamMode, setTeamMode] = useState('2v2'); // 4P: 'solo', '2v2'
   const [turnTimer, setTurnTimer] = useState('30');
   const [diceCount, setDiceCount] = useState(1); // 1 or 2
 
@@ -17,16 +17,6 @@ export default function HomeLobby({ onCreateRoom, onJoinRoom, showAlert }) {
   const [extraTurnOnKill, setExtraTurnOnKill] = useState(true);
   const [extraTurnOnHome, setExtraTurnOnHome] = useState(true);
   const [killRequiredToEnterHome, setKillRequiredToEnterHome] = useState(true);
-
-  const handleModeChange = (newMode) => {
-    sounds.playClick();
-    setMode(newMode);
-    if (newMode === '4P') {
-      setTeamMode('2v2');
-    } else {
-      setTeamMode('3v3');
-    }
-  };
 
   const handleCreateSubmit = (e) => {
     e.preventDefault();
@@ -77,7 +67,7 @@ export default function HomeLobby({ onCreateRoom, onJoinRoom, showAlert }) {
             LUDO ARENA
           </h1>
           <p style={{ color: '#94A3B8', fontSize: '0.95rem', marginTop: '6px' }}>
-            Real-Time 4P & 6P Custom Rules Multiplayer
+            Real-Time 4-Player Custom Rules Multiplayer
           </p>
         </div>
 
@@ -137,75 +127,29 @@ export default function HomeLobby({ onCreateRoom, onJoinRoom, showAlert }) {
 
         {tab === 'create' ? (
           <form onSubmit={handleCreateSubmit}>
-            {/* Mode Selection: 4P vs 6P */}
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#CBD5E1', marginBottom: '8px' }}>
-                <Users size={16} color="#818CF8" /> Board Version & Players
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <button 
-                  type="button" 
-                  onClick={() => handleModeChange('4P')}
-                  className={`glass-btn ${mode === '4P' ? 'primary' : ''}`}
-                  style={{ justifyContent: 'center' }}
-                >
-                  4 Players (Square)
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => handleModeChange('6P')}
-                  className={`glass-btn ${mode === '6P' ? 'primary' : ''}`}
-                  style={{ justifyContent: 'center' }}
-                >
-                  6 Players (Hexagon)
-                </button>
-              </div>
-            </div>
-
             {/* Team Mode Selection */}
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#CBD5E1', marginBottom: '8px' }}>
                 <Shield size={16} color="#2ED573" /> Teaming & Match Rules
               </label>
-              {mode === '4P' ? (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <button 
-                    type="button" 
-                    onClick={() => { sounds.playClick(); setTeamMode('2v2'); }}
-                    className={`glass-btn ${teamMode === '2v2' ? 'primary' : ''}`}
-                    style={{ justifyContent: 'center' }}
-                  >
-                    2v2 Diagonal Teams
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => { sounds.playClick(); setTeamMode('solo'); }}
-                    className={`glass-btn ${teamMode === 'solo' ? 'primary' : ''}`}
-                    style={{ justifyContent: 'center' }}
-                  >
-                    Free For All (1v1v1v1)
-                  </button>
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <button 
-                    type="button" 
-                    onClick={() => { sounds.playClick(); setTeamMode('3v3'); }}
-                    className={`glass-btn ${teamMode === '3v3' ? 'primary' : ''}`}
-                    style={{ justifyContent: 'center' }}
-                  >
-                    3v3 Diagonal Teams
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => { sounds.playClick(); setTeamMode('2v2v2'); }}
-                    className={`glass-btn ${teamMode === '2v2v2' ? 'primary' : ''}`}
-                    style={{ justifyContent: 'center' }}
-                  >
-                    2v2v2 Diagonal
-                  </button>
-                </div>
-              )}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <button 
+                  type="button" 
+                  onClick={() => { sounds.playClick(); setTeamMode('2v2'); }}
+                  className={`glass-btn ${teamMode === '2v2' ? 'primary' : ''}`}
+                  style={{ justifyContent: 'center' }}
+                >
+                  2v2 Diagonal Teams
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => { sounds.playClick(); setTeamMode('solo'); }}
+                  className={`glass-btn ${teamMode === 'solo' ? 'primary' : ''}`}
+                  style={{ justifyContent: 'center' }}
+                >
+                  Free For All (1v1v1v1)
+                </button>
+              </div>
             </div>
 
             {/* Dice Count Selection */}
