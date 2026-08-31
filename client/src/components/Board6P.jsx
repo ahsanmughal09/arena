@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { sounds } from '../utils/audio';
+import { getRotationAngle6P, rotatePoint } from '../utils/orientation';
 
 const PLAYER_COLORS = ['red', 'green', 'yellow', 'blue', 'orange', 'purple'];
 const COLOR_HEX_6P = {
@@ -575,9 +576,11 @@ export default function Board6P({ gameState, myColor, onMoveToken, onOpenThrowMe
     return { x: baseX + off.x, y: baseY + off.y };
   };
 
+  const rotationAngle = getRotationAngle6P(myColor);
+
   const handleTokenClick = (color, tokenIndex, tokCx, tokCy) => {
     let targetColor = activeColor;
-    let isClickable = (isMyTurn && color === activeColor && !gameState.canRoll);
+    let isClickable = (isMyTurn && color === activeColor && (gameState.dicePool?.length > 0 || !gameState.canRoll));
 
     if (gameState.appealState && gameState.appealState.inDemo) {
       if (myColor === gameState.appealState.appealingColor && color === gameState.appealState.offendingColor) {
@@ -601,9 +604,10 @@ export default function Board6P({ gameState, myColor, onMoveToken, onOpenThrowMe
       onMoveToken(tokenIndex, options[0].rollIndex);
     } else {
       sounds.playClick();
+      const popupPos = rotatePoint(tokCx, tokCy, 400, 400, rotationAngle);
       setActivePopup({
         tokenIndex,
-        coords: { x: tokCx, y: tokCy },
+        coords: popupPos,
         options
       });
     }
@@ -687,11 +691,12 @@ export default function Board6P({ gameState, myColor, onMoveToken, onOpenThrowMe
   return (
     <div 
       onClick={() => setActivePopup(null)}
+      className="board-6p-wrapper"
       style={{
         position: 'relative',
         width: '100%',
         height: '100%',
-        maxHeight: 'calc(100vh - 55px)',
+        maxHeight: '100%',
         aspectRatio: '1 / 1',
         display: 'flex',
         justifyContent: 'center',
@@ -704,7 +709,7 @@ export default function Board6P({ gameState, myColor, onMoveToken, onOpenThrowMe
         style={{ 
           width: '100%', 
           height: '100%', 
-          maxHeight: 'calc(100vh - 55px)', 
+          maxHeight: '100%', 
           borderRadius: '24px', 
           background: 'radial-gradient(circle at center, #1E293B 0%, #0F172A 100%)', 
           border: '2px solid rgba(99, 102, 241, 0.4)',
@@ -712,6 +717,9 @@ export default function Board6P({ gameState, myColor, onMoveToken, onOpenThrowMe
         }}
       >
         
+        {/* Main Rotated Presentation Group */}
+        <g transform={`rotate(${rotationAngle}, 400, 400)`}>
+
         {/* Outer Hexagon Background */}
         <polygon 
           points={PLAYER_COLORS.map((_, i) => {
@@ -727,7 +735,7 @@ export default function Board6P({ gameState, myColor, onMoveToken, onOpenThrowMe
         {sectors.map((sec, idx) => (
           <g key={`sec-group-${idx}`}>
             <circle cx={sec.x} cy={sec.y} r="54" fill={sec.hex} opacity="0.85" stroke="#FFFFFF" strokeWidth="2" />
-            <foreignObject x={sec.x - 65} y={sec.y - 50} width="130" height="70">
+            <foreignObject x={sec.x - 65} y={sec.y - 50} width="130" height="70" transform={`rotate(${-rotationAngle}, ${sec.x}, ${sec.y})`}>
               <YardPlayerCard6P 
                 color={sec.color} 
                 player={players[sec.color]} 
@@ -773,7 +781,7 @@ export default function Board6P({ gameState, myColor, onMoveToken, onOpenThrowMe
 
         {/* Central Home Finish Ring */}
         <circle cx={cx} cy={cy} r="45" fill="#0F172A" stroke="#6366F1" strokeWidth="4" />
-        <text x={cx} y={cy + 6} fill="#F8FAFC" fontSize="16" fontWeight="bold" textAnchor="middle">LUDO</text>
+        <text x={cx} y={cy + 6} fill="#F8FAFC" fontSize="16" fontWeight="bold" textAnchor="middle" transform={`rotate(${-rotationAngle}, 400, 400)`}>LUDO</text>
 
         {/* Tokens Rendering */}
         {allRenderTokens.map(tok => {
@@ -787,7 +795,7 @@ export default function Board6P({ gameState, myColor, onMoveToken, onOpenThrowMe
           const r = offsetInfo.r;
 
           const player = players[tok.color];
-          const options = (isMyTurn && tok.color === activeColor && !gameState.canRoll)
+          const options = (isMyTurn && tok.color === activeColor && (gameState.dicePool?.length > 0 || !gameState.canRoll))
             ? getValidRollOptionsForToken(player, tok.tIdx, gameState.dicePool, 76, killRequired, gameState, tok.color)
             : [];
           let isMoveable = options.length > 0;
@@ -842,6 +850,8 @@ export default function Board6P({ gameState, myColor, onMoveToken, onOpenThrowMe
             </g>
           );
         })}
+
+        </g>
 
         {/* Contextual Roll Selection Popover near clicked token */}
         {activePopup && (

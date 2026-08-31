@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { sounds } from '../utils/audio';
+import { getRotationAngle4P, rotatePoint } from '../utils/orientation';
 
 // 52 step perimeter path (col, row) on 15x15 grid (cell size = 40px)
 const MAIN_TRACK_4P = [
@@ -67,8 +68,8 @@ function YardPlayerCard({ color, player, isActive, isMe, teamName, finishStep, o
           ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98))'
           : player ? 'rgba(15, 23, 42, 0.88)' : 'rgba(15, 23, 42, 0.4)',
         borderRadius: '14px',
-        border: isActive ? `2px solid ${COLOR_HEX_4P[color] || '#6366F1'}` : '1.5px solid rgba(255, 255, 255, 0.25)',
-        boxShadow: isActive ? `0 0 20px ${COLOR_HEX_4P[color]}A0` : '0 6px 16px rgba(0, 0, 0, 0.6)',
+        border: isActive ? `2.5px solid ${COLOR_HEX_4P[color] || '#6366F1'}` : '1.5px solid rgba(255, 255, 255, 0.25)',
+        boxShadow: isActive ? `0 0 24px ${COLOR_HEX_4P[color]}C0, 0 0 10px ${COLOR_HEX_4P[color]}` : '0 6px 16px rgba(0, 0, 0, 0.6)',
         padding: '6px 10px',
         color: '#FFF',
         height: '100%',
@@ -88,8 +89,8 @@ function YardPlayerCard({ color, player, isActive, isMe, teamName, finishStep, o
             width: '8px',
             height: '8px',
             borderRadius: '50%',
-            background: player && player.connected ? '#2ED573' : '#64748B',
-            boxShadow: player && player.connected ? '0 0 6px #2ED573' : 'none',
+            background: player && player.connected ? (isActive ? COLOR_HEX_4P[color] : '#2ED573') : '#64748B',
+            boxShadow: player && player.connected ? `0 0 6px ${isActive ? COLOR_HEX_4P[color] : '#2ED573'}` : 'none',
             flexShrink: 0
           }} />
           <span style={{
@@ -136,12 +137,14 @@ function YardPlayerCard({ color, player, isActive, isMe, teamName, finishStep, o
               color: '#0F172A',
               fontSize: '8px',
               fontWeight: 900,
-              padding: '1px 5px',
+              padding: '2px 6px',
               borderRadius: '5px',
               textTransform: 'uppercase',
-              flexShrink: 0
+              flexShrink: 0,
+              boxShadow: `0 0 8px ${COLOR_HEX_4P[color]}`,
+              animation: 'pulse 1s infinite'
             }}>
-              TURN
+              ⚡ TURN
             </span>
           )}
         </div>
@@ -340,7 +343,16 @@ function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 
   return options;
 }
 
-export default function Board4P({ gameState, myColor, onMoveToken, onOpenThrowMenu, onActionComplete }) {
+export default function Board4P({ 
+  gameState, 
+  myColor, 
+  onMoveToken, 
+  onRollDice, 
+  onSelectRoll, 
+  onOpenThrowMenu, 
+  onSubmitAppeal, 
+  onActionComplete 
+}) {
   const [activePopup, setActivePopup] = useState(null);
   const [displaySteps, setDisplaySteps] = useState({});
   const [capturedLocks, setCapturedLocks] = useState({});
@@ -576,9 +588,11 @@ export default function Board4P({ gameState, myColor, onMoveToken, onOpenThrowMe
   const { players, activeColor } = gameState;
   const isMyTurn = (activeColor === myColor);
   const killRequired = !!gameState.customRules?.killRequiredToEnterHome;
+  const rotationAngle = getRotationAngle4P(myColor);
+
   const handleTokenClick = (color, tokenIndex, tokCx, tokCy) => {
     let targetColor = activeColor;
-    let isClickable = (isMyTurn && color === activeColor && !gameState.canRoll);
+    let isClickable = (isMyTurn && color === activeColor && (gameState.dicePool?.length > 0 || !gameState.canRoll));
 
     if (gameState.appealState && gameState.appealState.inDemo) {
       if (myColor === gameState.appealState.appealingColor && color === gameState.appealState.offendingColor) {
@@ -604,9 +618,10 @@ export default function Board4P({ gameState, myColor, onMoveToken, onOpenThrowMe
     } else {
       // Open contextual menu near token if multiple roll choices exist
       sounds.playClick();
+      const popupPos = rotatePoint(tokCx, tokCy, 300, 300, rotationAngle);
       setActivePopup({
         tokenIndex,
-        coords: { x: tokCx, y: tokCy },
+        coords: popupPos,
         options
       });
     }
@@ -718,6 +733,9 @@ export default function Board4P({ gameState, myColor, onMoveToken, onOpenThrowMe
           </radialGradient>
         </defs>
 
+        {/* Main Rotated Board Presentation Group */}
+        <g transform={`rotate(${rotationAngle}, 300, 300)`}>
+
         {/* 4 Corner Yards */}
         <rect x="0" y="0" width="240" height="240" fill="#FF4757" opacity="0.85" rx="12" />
         <rect x="20" y="20" width="200" height="200" fill="#0F172A" rx="16" />
@@ -731,21 +749,161 @@ export default function Board4P({ gameState, myColor, onMoveToken, onOpenThrowMe
         <rect x="0" y="360" width="240" height="240" fill="#1E90FF" opacity="0.85" rx="12" />
         <rect x="20" y="380" width="200" height="200" fill="#0F172A" rx="16" />
 
-        {/* Centered Integrated Yard Player Cards */}
-        <foreignObject x="35" y="75" width="170" height="90">
-          <YardPlayerCard color="red" player={players['red']} isActive={activeColor === 'red'} isMe={myColor === 'red'} teamName={gameState.teams?.['red']} finishStep={56} onOpenThrowMenu={onOpenThrowMenu} />
+        {/* 4 Corner Yards Bases & Integrated Player Stats Cards */}
+        {/* Red Yard Bases & Stats */}
+        <circle cx="52" cy="52" r="22" fill="#0F172A" stroke="#FF4757" strokeWidth="2.5" />
+        <circle cx="188" cy="52" r="22" fill="#0F172A" stroke="#FF4757" strokeWidth="2.5" />
+        <circle cx="52" cy="188" r="22" fill="#0F172A" stroke="#FF4757" strokeWidth="2.5" />
+        <circle cx="188" cy="188" r="22" fill="#0F172A" stroke="#FF4757" strokeWidth="2.5" />
+        <foreignObject x="55" y="75" width="130" height="76" transform={`rotate(${-rotationAngle}, 120, 113)`}>
+          <div style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            background: 'rgba(15, 23, 42, 0.85)',
+            backdropFilter: 'blur(8px)',
+            borderRadius: '12px',
+            border: activeColor === 'red' ? '2px solid #FF4757' : '1px solid rgba(255, 71, 87, 0.35)',
+            boxShadow: activeColor === 'red' ? '0 0 12px rgba(255, 71, 87, 0.6)' : '0 4px 10px rgba(0,0,0,0.5)',
+            padding: '5px 8px',
+            boxSizing: 'border-box',
+            color: '#FFF',
+            userSelect: 'none'
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+              <span style={{ fontSize: '10px', fontWeight: 900, color: '#FF4757', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                {players['red']?.name || 'RED'}
+              </span>
+              <span style={{ fontSize: '7.5px', color: '#94A3B8', fontWeight: 600 }}>
+                {gameState?.teams?.['red'] || 'RED'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '8.5px', fontWeight: 800, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '3px' }}>
+              <span style={{ color: '#EF4444' }} title="Kills">⚔️ {players['red']?.kills || 0}</span>
+              <span style={{ color: '#10B981' }} title="Home Tokens">🏠 {players['red']?.tokens?.filter(s => s === 56).length || 0}/4</span>
+              <span style={{ color: '#F59E0B' }} title="Appeals Left">⚖️ {players['red']?.appealsLeft ?? 3}</span>
+            </div>
+          </div>
         </foreignObject>
 
-        <foreignObject x="395" y="75" width="170" height="90">
-          <YardPlayerCard color="green" player={players['green']} isActive={activeColor === 'green'} isMe={myColor === 'green'} teamName={gameState.teams?.['green']} finishStep={56} onOpenThrowMenu={onOpenThrowMenu} />
+        {/* Green Yard Bases & Stats */}
+        <circle cx="412" cy="52" r="22" fill="#0F172A" stroke="#2ED573" strokeWidth="2.5" />
+        <circle cx="548" cy="52" r="22" fill="#0F172A" stroke="#2ED573" strokeWidth="2.5" />
+        <circle cx="412" cy="188" r="22" fill="#0F172A" stroke="#2ED573" strokeWidth="2.5" />
+        <circle cx="548" cy="188" r="22" fill="#0F172A" stroke="#2ED573" strokeWidth="2.5" />
+        <foreignObject x="415" y="75" width="130" height="76" transform={`rotate(${-rotationAngle}, 480, 113)`}>
+          <div style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            background: 'rgba(15, 23, 42, 0.85)',
+            backdropFilter: 'blur(8px)',
+            borderRadius: '12px',
+            border: activeColor === 'green' ? '2px solid #2ED573' : '1px solid rgba(46, 213, 115, 0.35)',
+            boxShadow: activeColor === 'green' ? '0 0 12px rgba(46, 213, 115, 0.6)' : '0 4px 10px rgba(0,0,0,0.5)',
+            padding: '5px 8px',
+            boxSizing: 'border-box',
+            color: '#FFF',
+            userSelect: 'none'
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+              <span style={{ fontSize: '10px', fontWeight: 900, color: '#2ED573', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                {players['green']?.name || 'GREEN'}
+              </span>
+              <span style={{ fontSize: '7.5px', color: '#94A3B8', fontWeight: 600 }}>
+                {gameState?.teams?.['green'] || 'GREEN'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '8.5px', fontWeight: 800, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '3px' }}>
+              <span style={{ color: '#EF4444' }} title="Kills">⚔️ {players['green']?.kills || 0}</span>
+              <span style={{ color: '#10B981' }} title="Home Tokens">🏠 {players['green']?.tokens?.filter(s => s === 56).length || 0}/4</span>
+              <span style={{ color: '#F59E0B' }} title="Appeals Left">⚖️ {players['green']?.appealsLeft ?? 3}</span>
+            </div>
+          </div>
         </foreignObject>
 
-        <foreignObject x="395" y="435" width="170" height="90">
-          <YardPlayerCard color="yellow" player={players['yellow']} isActive={activeColor === 'yellow'} isMe={myColor === 'yellow'} teamName={gameState.teams?.['yellow']} finishStep={56} onOpenThrowMenu={onOpenThrowMenu} />
+        {/* Yellow Yard Bases & Stats */}
+        <circle cx="412" cy="412" r="22" fill="#0F172A" stroke="#FFA502" strokeWidth="2.5" />
+        <circle cx="548" cy="412" r="22" fill="#0F172A" stroke="#FFA502" strokeWidth="2.5" />
+        <circle cx="412" cy="548" r="22" fill="#0F172A" stroke="#FFA502" strokeWidth="2.5" />
+        <circle cx="548" cy="548" r="22" fill="#0F172A" stroke="#FFA502" strokeWidth="2.5" />
+        <foreignObject x="415" y="435" width="130" height="76" transform={`rotate(${-rotationAngle}, 480, 473)`}>
+          <div style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            background: 'rgba(15, 23, 42, 0.85)',
+            backdropFilter: 'blur(8px)',
+            borderRadius: '12px',
+            border: activeColor === 'yellow' ? '2px solid #FFA502' : '1px solid rgba(255, 165, 2, 0.35)',
+            boxShadow: activeColor === 'yellow' ? '0 0 12px rgba(255, 165, 2, 0.6)' : '0 4px 10px rgba(0,0,0,0.5)',
+            padding: '5px 8px',
+            boxSizing: 'border-box',
+            color: '#FFF',
+            userSelect: 'none'
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+              <span style={{ fontSize: '10px', fontWeight: 900, color: '#FFA502', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                {players['yellow']?.name || 'YELLOW'}
+              </span>
+              <span style={{ fontSize: '7.5px', color: '#94A3B8', fontWeight: 600 }}>
+                {gameState?.teams?.['yellow'] || 'YELLOW'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '8.5px', fontWeight: 800, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '3px' }}>
+              <span style={{ color: '#EF4444' }} title="Kills">⚔️ {players['yellow']?.kills || 0}</span>
+              <span style={{ color: '#10B981' }} title="Home Tokens">🏠 {players['yellow']?.tokens?.filter(s => s === 56).length || 0}/4</span>
+              <span style={{ color: '#F59E0B' }} title="Appeals Left">⚖️ {players['yellow']?.appealsLeft ?? 3}</span>
+            </div>
+          </div>
         </foreignObject>
 
-        <foreignObject x="35" y="435" width="170" height="90">
-          <YardPlayerCard color="blue" player={players['blue']} isActive={activeColor === 'blue'} isMe={myColor === 'blue'} teamName={gameState.teams?.['blue']} finishStep={56} onOpenThrowMenu={onOpenThrowMenu} />
+        {/* Blue Yard Bases & Stats */}
+        <circle cx="52" cy="412" r="22" fill="#0F172A" stroke="#1E90FF" strokeWidth="2.5" />
+        <circle cx="188" cy="412" r="22" fill="#0F172A" stroke="#1E90FF" strokeWidth="2.5" />
+        <circle cx="52" cy="548" r="22" fill="#0F172A" stroke="#1E90FF" strokeWidth="2.5" />
+        <circle cx="188" cy="548" r="22" fill="#0F172A" stroke="#1E90FF" strokeWidth="2.5" />
+        <foreignObject x="55" y="435" width="130" height="76" transform={`rotate(${-rotationAngle}, 120, 473)`}>
+          <div style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            background: 'rgba(15, 23, 42, 0.85)',
+            backdropFilter: 'blur(8px)',
+            borderRadius: '12px',
+            border: activeColor === 'blue' ? '2px solid #1E90FF' : '1px solid rgba(30, 144, 255, 0.35)',
+            boxShadow: activeColor === 'blue' ? '0 0 12px rgba(30, 144, 255, 0.6)' : '0 4px 10px rgba(0,0,0,0.5)',
+            padding: '5px 8px',
+            boxSizing: 'border-box',
+            color: '#FFF',
+            userSelect: 'none'
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+              <span style={{ fontSize: '10px', fontWeight: 900, color: '#1E90FF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                {players['blue']?.name || 'BLUE'}
+              </span>
+              <span style={{ fontSize: '7.5px', color: '#94A3B8', fontWeight: 600 }}>
+                {gameState?.teams?.['blue'] || 'BLUE'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '8.5px', fontWeight: 800, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '3px' }}>
+              <span style={{ color: '#EF4444' }} title="Kills">⚔️ {players['blue']?.kills || 0}</span>
+              <span style={{ color: '#10B981' }} title="Home Tokens">🏠 {players['blue']?.tokens?.filter(s => s === 56).length || 0}/4</span>
+              <span style={{ color: '#F59E0B' }} title="Appeals Left">⚖️ {players['blue']?.appealsLeft ?? 3}</span>
+            </div>
+          </div>
         </foreignObject>
 
         {/* Home Stretch Highlight Track Cells */}
@@ -789,7 +947,7 @@ export default function Board4P({ gameState, myColor, onMoveToken, onOpenThrowMe
         <polygon points="360,360 240,360 300,300" fill="#1E90FF" />
         <polygon points="240,360 240,240 300,300" fill="#FF4757" />
         <circle cx="300" cy="300" r="28" fill="#0F172A" stroke="#F8FAFC" strokeWidth="3" />
-        <text x="300" y="306" fill="#F8FAFC" fontSize="16" fontWeight="bold" textAnchor="middle">LUDO</text>
+        <text x="300" y="306" fill="#F8FAFC" fontSize="16" fontWeight="bold" textAnchor="middle" transform={`rotate(${-rotationAngle}, 300, 300)`}>LUDO</text>
 
         {/* Tokens Rendering */}
         {allRenderTokens.map(tok => {
@@ -803,8 +961,8 @@ export default function Board4P({ gameState, myColor, onMoveToken, onOpenThrowMe
           const r = offsetInfo.r;
 
           const player = players[tok.color];
-          const options = (isMyTurn && tok.color === activeColor && !gameState.canRoll)
-            ? getValidRollOptionsForToken(player, tok.tIdx, gameState.dicePool, 56, killRequired)
+          const options = (isMyTurn && tok.color === activeColor && (gameState.dicePool?.length > 0 || !gameState.canRoll))
+            ? getValidRollOptionsForToken(player, tok.tIdx, gameState.dicePool, 56, killRequired, gameState, tok.color)
             : [];
           let isMoveable = options.length > 0;
           if (gameState.appealState && gameState.appealState.inDemo) {
@@ -868,43 +1026,65 @@ export default function Board4P({ gameState, myColor, onMoveToken, onOpenThrowMe
           );
         })}
 
-        {/* Contextual Roll Selection Popover near clicked token */}
-        {activePopup && (
-          <g
-            transform={`translate(${activePopup.coords.x}, ${Math.max(32, activePopup.coords.y - 40)})`}
-          >
-            <rect
-              x={- (activePopup.options.length * 42 + 14) / 2}
-              y="-20"
-              width={activePopup.options.length * 42 + 14}
-              height="40"
-              rx="20"
-              fill="#0F172A"
-              stroke="#6366F1"
-              strokeWidth="2.5"
-              filter="drop-shadow(0 10px 20px rgba(0,0,0,0.8))"
-            />
-            {activePopup.options.map((opt, idx) => {
-              const btnX = - (activePopup.options.length * 42) / 2 + idx * 42 + 21;
-              return (
-                <g
-                  key={`opt-${idx}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    sounds.playTokenStep();
-                    onMoveToken(activePopup.tokenIndex, opt.rollIndex);
-                    setActivePopup(null);
-                  }}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <circle cx={btnX} cy="0" r="18" fill="transparent" />
-                  <circle cx={btnX} cy="0" r="15" fill={opt.val === 6 ? '#22C55E' : '#6366F1'} stroke="#FFFFFF" strokeWidth="1.5" />
-                  <text x={btnX} y="4.5" fill="#FFFFFF" fontSize="13" fontWeight="bold" textAnchor="middle">{opt.val}</text>
-                </g>
-              );
-            })}
-          </g>
-        )}
+        </g>
+
+        {/* Contextual Roll Selection Popover near clicked token with Smart Clamping & Edge Flip */}
+        {activePopup && (() => {
+          const btnWidth = 40;
+          const pad = 14;
+          const popupWidth = activePopup.options.length * btnWidth + pad;
+          const halfWidth = popupWidth / 2;
+          
+          // Smart X Clamping: prevents popover from ever overflowing left (x < 10) or right (x > 590)
+          const clampedX = Math.max(10 + halfWidth, Math.min(590 - halfWidth, activePopup.coords.x));
+          
+          // Smart Y Placement: if near top edge (< 55), flips below token; if near bottom edge (> 545), stays above
+          const isNearTop = activePopup.coords.y < 55;
+          const isNearBottom = activePopup.coords.y > 545;
+          let popY = isNearTop 
+            ? activePopup.coords.y + 38 
+            : isNearBottom 
+              ? activePopup.coords.y - 38 
+              : activePopup.coords.y - 36;
+          popY = Math.max(24, Math.min(576, popY));
+
+          return (
+            <g
+              transform={`translate(${clampedX}, ${popY})`}
+              style={{ filter: 'drop-shadow(0 10px 25px rgba(0,0,0,0.85))' }}
+            >
+              <rect
+                x={-halfWidth}
+                y="-20"
+                width={popupWidth}
+                height="40"
+                rx="20"
+                fill="#0F172A"
+                stroke="#6366F1"
+                strokeWidth="2.5"
+              />
+              {activePopup.options.map((opt, idx) => {
+                const btnX = -halfWidth + pad / 2 + idx * btnWidth + btnWidth / 2;
+                return (
+                  <g
+                    key={`opt-${idx}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      sounds.playTokenStep();
+                      onMoveToken(activePopup.tokenIndex, opt.rollIndex);
+                      setActivePopup(null);
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <circle cx={btnX} cy="0" r="18" fill="transparent" />
+                    <circle cx={btnX} cy="0" r="15" fill={opt.val === 6 ? '#22C55E' : '#6366F1'} stroke="#FFFFFF" strokeWidth="1.5" />
+                    <text x={btnX} y="4.5" fill="#FFFFFF" fontSize="13" fontWeight="900" textAnchor="middle">{opt.val}</text>
+                  </g>
+                );
+              })}
+            </g>
+          );
+        })()}
 
       </svg>
     </div>

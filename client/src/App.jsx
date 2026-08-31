@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { socket } from './utils/socket';
 import { sounds } from './utils/audio';
+import { getCornerMap4P } from './utils/orientation';
 import HomeLobby from './components/HomeLobby';
 import GameLobby from './components/GameLobby';
 import Board4P from './components/Board4P';
 import Board6P from './components/Board6P';
-import DiceRoller from './components/DiceRoller';
+import MiniCornerPod from './components/MiniCornerPod';
 import ChatPanel from './components/ChatPanel';
 import VictoryModal from './components/VictoryModal';
-import AppealOverlay from './components/AppealOverlay';
 import ThrowableOverlay from './components/ThrowableOverlay';
 import ThrowablePickerModal from './components/ThrowablePickerModal';
 import ExtraTurnBanner from './components/ExtraTurnBanner';
 import ConfirmModal from './components/ConfirmModal';
+import confetti from 'canvas-confetti';
 import { MessageSquare, X } from 'lucide-react';
 
 const COLOR_HEX_CHIP = {
@@ -45,6 +46,100 @@ export default function App() {
 
   // Custom Modal State (replaces native alert and confirm)
   const [modalConfig, setModalConfig] = useState(null);
+
+  // Victory Celebration State (5-second on-board celebration before full stats modal)
+  const [showVictoryStats, setShowVictoryStats] = useState(false);
+  const [celebrationActive, setCelebrationActive] = useState(false);
+
+  // Turn Toast Notification State & Ref
+  const [turnToastNotice, setTurnToastNotice] = useState(null);
+  const prevActiveColorRef = React.useRef(null);
+
+  useEffect(() => {
+    if (view !== 'game' || !gameState || gameState.gameOver) return;
+
+    const currentActive = gameState.activeColor;
+    if (currentActive && currentActive !== prevActiveColorRef.current) {
+      const isMyTurnNow = currentActive === myColor;
+      const activePlayerName = gameState.players?.[currentActive]?.name || currentActive.toUpperCase();
+
+      // 1. Trigger Sound & Haptic Vibration
+      if (isMyTurnNow) {
+        sounds.playYourTurn();
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          try {
+            navigator.vibrate([180, 90, 180]);
+          } catch {
+            // vibration fallback
+          }
+        }
+      } else {
+        sounds.playTurnChange();
+      }
+
+      // 2. Show Turn Pop-in Toast
+      setTurnToastNotice({
+        color: currentActive,
+        isMyTurn: isMyTurnNow,
+        name: activePlayerName
+      });
+
+      const toastTimer = setTimeout(() => {
+        setTurnToastNotice(null);
+      }, 2200);
+
+      prevActiveColorRef.current = currentActive;
+
+      return () => clearTimeout(toastTimer);
+    }
+  }, [gameState?.activeColor, myColor, view]);
+
+  useEffect(() => {
+    if (gameState?.gameOver) {
+      setCelebrationActive(true);
+      setShowVictoryStats(false);
+      sounds.playWinFanfare();
+
+      // Fire festive confetti over the board for 5 seconds
+      const duration = 5 * 1000;
+      const end = Date.now() + duration;
+      const interval = setInterval(() => {
+        confetti({
+          particleCount: 6,
+          angle: 60,
+          spread: 65,
+          origin: { x: 0.15, y: 0.7 }
+        });
+        confetti({
+          particleCount: 6,
+          angle: 120,
+          spread: 65,
+          origin: { x: 0.85, y: 0.7 }
+        });
+        confetti({
+          particleCount: 8,
+          spread: 90,
+          origin: { y: 0.45 }
+        });
+        if (Date.now() >= end) {
+          clearInterval(interval);
+        }
+      }, 250);
+
+      // Transition to full stats leaderboard modal after 5 seconds
+      const timer = setTimeout(() => {
+        setShowVictoryStats(true);
+      }, 5000);
+
+      return () => {
+        clearInterval(interval);
+        clearTimeout(timer);
+      };
+    } else {
+      setShowVictoryStats(false);
+      setCelebrationActive(false);
+    }
+  }, [gameState?.gameOver]);
 
   const showAlert = (title, message, variant = 'warning') => {
     setModalConfig({
@@ -357,6 +452,49 @@ export default function App() {
       {/* Extra Turn Notification Banner */}
       <ExtraTurnBanner notice={extraTurnNotice} onClose={() => setExtraTurnNotice(null)} />
 
+      {/* Animated Turn Pop-in Toast Overlay */}
+      {turnToastNotice && (
+        <div
+          className="turn-toast-overlay"
+          style={{
+            position: 'fixed',
+            top: '60px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 250,
+            background: turnToastNotice.isMyTurn 
+              ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.96), rgba(16, 185, 129, 0.96))'
+              : `linear-gradient(135deg, ${COLOR_HEX_CHIP[turnToastNotice.color]}E6, #0F172A)`,
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: turnToastNotice.isMyTurn ? '2px solid #86EFAC' : `2px solid ${COLOR_HEX_CHIP[turnToastNotice.color]}`,
+            borderRadius: '24px',
+            padding: '8px 22px',
+            boxShadow: turnToastNotice.isMyTurn 
+              ? '0 10px 30px rgba(34, 197, 94, 0.6), 0 0 20px rgba(134, 239, 172, 0.8)' 
+              : `0 10px 30px ${COLOR_HEX_CHIP[turnToastNotice.color]}60`,
+            color: '#FFF',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            animation: 'turnToastPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            pointerEvents: 'none'
+          }}
+        >
+          <span style={{ fontSize: '1.4rem' }}>
+            {turnToastNotice.isMyTurn ? '⚡' : '🎲'}
+          </span>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: '0.92rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              {turnToastNotice.isMyTurn ? "IT'S YOUR TURN!" : `${turnToastNotice.name}'S TURN`}
+            </span>
+            <span style={{ fontSize: '0.7rem', color: turnToastNotice.isMyTurn ? '#DCFCE7' : '#E2E8F0', fontWeight: 700 }}>
+              {turnToastNotice.isMyTurn ? "Roll the dice now!" : `Waiting for ${turnToastNotice.name}...`}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Custom Alert & Confirm Modal */}
       {modalConfig?.isOpen && (
         <ConfirmModal {...modalConfig} />
@@ -397,204 +535,203 @@ export default function App() {
           
           {/* Top Bar / Header */}
           <div className="glass-panel game-top-bar">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <h2 style={{ fontSize: '1.15rem', fontWeight: 800, background: 'linear-gradient(135deg, #FFF, #818CF8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            {/* Left: Brand & Room Code */}
+            <div className="top-bar-left">
+              <h2 className="top-bar-title">
                 LUDO {gameState.mode}
               </h2>
-              <span style={{ fontSize: '0.75rem', color: '#CBD5E1', background: 'rgba(255,255,255,0.08)', padding: '2px 8px', borderRadius: '8px' }}>
-                Room: <strong style={{ color: '#818CF8' }}>{roomCode}</strong>
+              <span className="top-bar-room-badge">
+                <strong style={{ color: '#818CF8' }}>#{roomCode}</strong>
               </span>
               {gameState.customRules?.diceCount === 2 && (
-                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#2ED573', background: 'rgba(46, 213, 115, 0.15)', border: '1px solid rgba(46, 213, 115, 0.3)', padding: '1px 6px', borderRadius: '6px' }}>
+                <span className="top-bar-rule-chip desktop-only-rule">
                   🎲 2 Dice
                 </span>
               )}
               {gameState.customRules?.killRequiredToEnterHome && (
-                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#FFA502', background: 'rgba(255, 165, 2, 0.15)', border: '1px solid rgba(255, 165, 2, 0.3)', padding: '1px 6px', borderRadius: '6px' }}>
+                <span className="top-bar-rule-chip desktop-only-rule">
                   🎯 Kill Req
                 </span>
               )}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontWeight: 800, color: `#${myColor}`, background: 'rgba(30, 41, 59, 0.8)', border: `1px solid ${COLOR_HEX_CHIP[myColor] || 'rgba(255,255,255,0.2)'}`, padding: '2px 8px', borderRadius: '8px', textTransform: 'uppercase', fontSize: '0.75rem' }}>
-                {myColor}
-              </span>
-              <button 
-                onClick={handleLeaveRoom}
+            {/* Center: Prominent Active Turn Pill */}
+            {gameState.activeColor && (
+              <div 
+                className={`top-bar-turn-badge ${isMyTurn ? 'my-turn-active-pill' : ''}`}
                 style={{
-                  background: 'rgba(239, 68, 68, 0.2)',
-                  border: '1px solid rgba(239, 68, 68, 0.5)',
-                  color: '#EF4444',
-                  fontWeight: 700,
-                  fontSize: '0.75rem',
-                  padding: '3px 8px',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '3px',
-                  transition: 'all 0.2s ease'
+                  background: isMyTurn 
+                    ? 'linear-gradient(135deg, rgba(46, 213, 115, 0.28), rgba(15, 23, 42, 0.95))' 
+                    : `linear-gradient(135deg, ${COLOR_HEX_CHIP[gameState.activeColor]}28, rgba(15, 23, 42, 0.95))`,
+                  border: isMyTurn ? '1.5px solid #2ED573' : `1.5px solid ${COLOR_HEX_CHIP[gameState.activeColor] || '#6366F1'}`,
+                  boxShadow: isMyTurn ? '0 0 14px rgba(46, 213, 115, 0.6)' : `0 0 10px ${COLOR_HEX_CHIP[gameState.activeColor]}40`
                 }}
               >
-                🚪 Leave
-              </button>
-            </div>
-          </div>
-
-          {/* Main Game Layout (Responsive Grid: 3-Column on Desktop | Centered Stack on Mobile) */}
-          <div className="game-main-layout">
-            
-            {/* Left Column: Desktop Chat */}
-            <div className="desktop-chat-col">
-              <ChatPanel 
-                roomCode={roomCode}
-                socket={socket}
-                chatMessages={chatMessages}
-                myColor={myColor}
-              />
-            </div>
-
-            {/* Center Column: Interactive Responsive Board */}
-            <div className="center-board-col">
-              {gameState.mode === '4P' ? (
-                <Board4P gameState={gameState} myColor={myColor} onMoveToken={handleMoveToken} onOpenThrowMenu={handleOpenThrowMenu} onActionComplete={handleBoardActionComplete} />
-              ) : (
-                <Board6P gameState={gameState} myColor={myColor} onMoveToken={handleMoveToken} onOpenThrowMenu={handleOpenThrowMenu} onActionComplete={handleBoardActionComplete} />
-              )}
-            </div>
-
-            {/* Right Column: Desktop Controls */}
-            <div className="right-controls-col">
-              
-              {/* Dice Roller */}
-              <div className="glass-panel" style={{ padding: '14px', display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-                <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#818CF8', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  🎲 Dice Controls
-                </h3>
-                <DiceRoller 
-                  currentDice={gameState.currentDice}
-                  dicePool={gameState.dicePool}
-                  selectedRollIndex={gameState.selectedRollIndex}
-                  canRoll={gameState.canRoll}
-                  isMyTurn={isMyTurn}
-                  activeColor={gameState.activeColor}
-                  onRollDice={handleRollDice}
-                  onSelectRoll={handleSelectRoll}
-                  diceCount={gameState.customRules?.diceCount || 1}
-                  allTokensInHome={gameState.allTokensInHome}
-                  isHomeDiceSelectionMode={gameState.isHomeDiceSelectionMode}
-                  timeLeft={timeLeft}
-                  maxTime={gameState.turnTimer || 30}
+                <div 
+                  className="turn-dot-indicator"
+                  style={{
+                    background: isMyTurn ? '#2ED573' : (COLOR_HEX_CHIP[gameState.activeColor] || '#6366F1'),
+                    boxShadow: `0 0 8px ${COLOR_HEX_CHIP[gameState.activeColor]}`
+                  }} 
                 />
+                <span className="turn-text-content">
+                  {isMyTurn ? (
+                    <span style={{ color: '#2ED573', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                      ⚡ YOUR TURN
+                    </span>
+                  ) : (
+                    <span style={{ color: '#CBD5E1' }}>
+                      Turn: <strong style={{ color: COLOR_HEX_CHIP[gameState.activeColor] }}>
+                        {(gameState.players?.[gameState.activeColor]?.name || gameState.activeColor).toUpperCase()}
+                      </strong>
+                    </span>
+                  )}
+                </span>
+                {timeLeft !== undefined && (
+                  <span 
+                    className="turn-timer-badge"
+                    style={{
+                      color: timeLeft <= 5 ? '#FF4757' : (timeLeft <= 10 ? '#FFA502' : '#F1F5F9')
+                    }}
+                  >
+                    ⏱️{timeLeft}s
+                  </span>
+                )}
               </div>
+            )}
 
-              {/* Appeal Section in Right Column */}
-              <AppealOverlay 
-                appealState={gameState.appealState}
-                canAppealLastTurn={gameState.canAppealLastTurn}
-                lastTurnOffendingColor={gameState.lastTurnOffendingColor}
-                myColor={myColor}
-                playerAppealsLeft={gameState.players[myColor]?.appealsLeft ?? 3}
-                onSubmitAppeal={handleSubmitAppeal}
-              />
-
-            </div>
-
-            {/* Mobile Bottom Dock (Active on Mobile/Tablet <= 1024px) */}
-            <div className="mobile-bottom-dock">
-              {/* Chat Toggle Button */}
+            {/* Right: Actions (Chat, My Color, Leave) */}
+            <div className="top-bar-right">
               <button
                 onClick={() => {
                   setIsMobileChatOpen(true);
                   setUnreadChatCount(0);
                 }}
-                style={{
-                  position: 'relative',
-                  background: 'rgba(30, 41, 59, 0.85)',
-                  border: '1px solid rgba(255, 255, 255, 0.25)',
-                  borderRadius: '12px',
-                  color: '#FFF',
-                  padding: '6px 10px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '2px',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                  minWidth: '48px'
-                }}
+                className="top-bar-action-btn chat-btn"
+                title="Open Room Chat"
               >
-                <MessageSquare size={16} color="#818CF8" />
-                <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#CBD5E1' }}>Chat</span>
+                <MessageSquare size={13} color="#818CF8" />
+                <span className="btn-label-desktop">Chat</span>
                 {unreadChatCount > 0 && (
-                  <span style={{
-                    position: 'absolute',
-                    top: '-4px',
-                    right: '-4px',
-                    background: '#EF4444',
-                    color: '#FFF',
-                    fontSize: '0.6rem',
-                    fontWeight: 900,
-                    padding: '1px 5px',
-                    borderRadius: '10px',
-                    boxShadow: '0 0 6px rgba(239, 68, 68, 0.8)'
-                  }}>
+                  <span className="unread-badge">
                     {unreadChatCount}
                   </span>
                 )}
               </button>
 
-              {/* Center Compact Dice Roller */}
-              <div style={{ flex: 1, display: 'flex', justifyContent: 'center', minWidth: 0 }}>
-                <DiceRoller 
-                  currentDice={gameState.currentDice}
-                  dicePool={gameState.dicePool}
-                  selectedRollIndex={gameState.selectedRollIndex}
-                  canRoll={gameState.canRoll}
-                  isMyTurn={isMyTurn}
-                  activeColor={gameState.activeColor}
+              <span 
+                className="top-bar-mycolor-badge"
+                style={{
+                  color: COLOR_HEX_CHIP[myColor] || '#FFF',
+                  borderColor: COLOR_HEX_CHIP[myColor] || 'rgba(255,255,255,0.2)'
+                }}
+              >
+                {myColor}
+              </span>
+
+              <button 
+                onClick={handleLeaveRoom}
+                className="top-bar-action-btn leave-btn"
+                title="Leave Room"
+              >
+                <span>🚪</span>
+                <span className="btn-label-desktop">Leave</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Main Game Layout with Outside-Connected Minimalist Corner Dice Pods */}
+          {(() => {
+            const cornerMap = getCornerMap4P(myColor);
+            const renderPodByColor = (color) => {
+              if (!color) return null;
+              return (
+                <MiniCornerPod
+                  color={color}
+                  player={gameState.players?.[color]}
+                  teamName={gameState.teams?.[color]}
+                  isMe={myColor === color}
+                  isActive={gameState.activeColor === color}
+                  isMyTurn={isMyTurn && gameState.activeColor === color}
+                  gameState={{ ...gameState, timeLeft }}
                   onRollDice={handleRollDice}
                   onSelectRoll={handleSelectRoll}
-                  diceCount={gameState.customRules?.diceCount || 1}
-                  allTokensInHome={gameState.allTokensInHome}
-                  isHomeDiceSelectionMode={gameState.isHomeDiceSelectionMode}
-                  timeLeft={timeLeft}
-                  maxTime={gameState.turnTimer || 30}
-                  compact={true}
+                  onOpenThrowMenu={handleOpenThrowMenu}
+                  onSubmitAppeal={handleSubmitAppeal}
                 />
+              );
+            };
+
+            return (
+              <div className="game-main-layout">
+                {/* Desktop Left Side Column: Top-Left Pod & Bottom-Left Pod (myColor) + Chat */}
+                <div className="desktop-side-col left-side-col">
+                  {renderPodByColor(cornerMap.TL)}
+
+                  <div className="desktop-chat-wrapper">
+                    <ChatPanel 
+                      roomCode={roomCode}
+                      socket={socket}
+                      chatMessages={chatMessages}
+                      myColor={myColor}
+                    />
+                  </div>
+
+                  {renderPodByColor(cornerMap.BL)}
+                </div>
+
+                {/* Center Area: Connected Top/Bottom Pods on Mobile + Centered Board */}
+                <div className="center-game-wrapper">
+                  
+                  {/* Mobile Top Connected Pods: Top-Left & Top-Right */}
+                  <div className="mobile-pods-row top-pods">
+                    {renderPodByColor(cornerMap.TL)}
+                    {renderPodByColor(cornerMap.TR)}
+                  </div>
+
+                  {/* Centered Clean Board */}
+                  <div className="center-board-col">
+                    {gameState.mode === '4P' ? (
+                      <Board4P 
+                        gameState={gameState} 
+                        myColor={myColor} 
+                        onMoveToken={handleMoveToken} 
+                        onOpenThrowMenu={handleOpenThrowMenu} 
+                        onActionComplete={handleBoardActionComplete} 
+                      />
+                    ) : (
+                      <Board6P 
+                        gameState={gameState} 
+                        myColor={myColor} 
+                        onMoveToken={handleMoveToken} 
+                        onOpenThrowMenu={handleOpenThrowMenu} 
+                        onActionComplete={handleBoardActionComplete} 
+                      />
+                    )}
+                  </div>
+
+                  {/* Mobile Bottom Connected Pods: Bottom-Left (myColor) & Bottom-Right */}
+                  <div className="mobile-pods-row bottom-pods">
+                    {renderPodByColor(cornerMap.BL)}
+                    {renderPodByColor(cornerMap.BR)}
+                  </div>
+
+                </div>
+
+                {/* Desktop Right Side Column: Top-Right Pod & Bottom-Right Pod */}
+                <div className="desktop-side-col right-side-col">
+                  {renderPodByColor(cornerMap.TR)}
+
+                  <div className="desktop-auxiliary-wrapper" style={{ flex: 1 }}>
+                    {/* Clean spacer / auxiliary area */}
+                  </div>
+
+                  {renderPodByColor(cornerMap.BR)}
+                </div>
+
               </div>
-
-              {/* Mobile Appeal Button */}
-              {(gameState.canAppealLastTurn || gameState.appealState?.inDemo) && (
-                <button
-                  onClick={handleSubmitAppeal}
-                  style={{
-                    background: 'linear-gradient(135deg, #F59E0B, #D97706)',
-                    border: '1px solid #FCD34D',
-                    borderRadius: '12px',
-                    color: '#FFF',
-                    padding: '6px 8px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '2px',
-                    cursor: 'pointer',
-                    flexShrink: 0,
-                    minWidth: '48px',
-                    boxShadow: '0 0 12px rgba(245, 158, 11, 0.5)',
-                    animation: 'pulse 1s infinite'
-                  }}
-                >
-                  <span style={{ fontSize: '0.9rem' }}>⚖️</span>
-                  <span style={{ fontSize: '0.6rem', fontWeight: 900 }}>Appeal</span>
-                </button>
-              )}
-            </div>
-
-          </div>
+            );
+          })()}
 
           {/* Mobile Chat Sliding Drawer Modal */}
           {isMobileChatOpen && (
@@ -648,8 +785,45 @@ export default function App() {
             </div>
           )}
 
-          {/* Victory Modal */}
-          {gameState.gameOver && (
+          {/* On-Board Victory Celebration Banner (Stays visible over board for 5 seconds before stats) */}
+          {celebrationActive && !showVictoryStats && (
+            <div 
+              style={{
+                position: 'fixed',
+                top: '56px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 200,
+                background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.96), rgba(202, 138, 4, 0.96))',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                borderRadius: '30px',
+                border: '2px solid #FEF08A',
+                boxShadow: '0 10px 40px rgba(234, 179, 8, 0.6), 0 0 25px rgba(254, 240, 138, 0.8)',
+                padding: '8px 24px',
+                color: '#FFF',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                animation: 'pulse 1s infinite, slideDown 0.3s ease-out',
+                pointerEvents: 'none'
+              }}
+            >
+              <span style={{ fontSize: '1.6rem' }}>🏆</span>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span style={{ fontSize: '1rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', color: '#FFF', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                  🎉 {gameState.winner?.toUpperCase()} WINS! 🎉
+                </span>
+                <span style={{ fontSize: '0.72rem', color: '#FEF9C3', fontWeight: 700 }}>
+                  Board celebrating... stats in a moment
+                </span>
+              </div>
+              <span style={{ fontSize: '1.6rem' }}>👑</span>
+            </div>
+          )}
+
+          {/* Victory Modal (shown after 5 seconds of on-board celebration) */}
+          {gameState.gameOver && showVictoryStats && (
             <VictoryModal 
               winner={gameState.winner} 
               players={gameState.players}

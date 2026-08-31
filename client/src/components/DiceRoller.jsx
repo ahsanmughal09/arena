@@ -158,32 +158,208 @@ export default function DiceRoller({
 
   const showBalance = !isHomeDiceSelectionMode && !allTokensInHome && dicePool && dicePool.length > 1;
 
-  const diceSize = compact ? 48 : 68;
+  const diceSize = compact ? 42 : 68;
+
+  if (compact) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', height: '100%', width: '100%', boxSizing: 'border-box' }}>
+        
+        {/* Top: Slim Real-Time Turn Timer */}
+        {timeLeft !== undefined && timeLeft !== null && (
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', padding: '0 2px' }}>
+              <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#94A3B8' }}>
+                ⏳ {isMyTurn ? 'Your Turn' : `${activeColor?.toUpperCase()}'s Turn`}
+              </span>
+              <span style={{ 
+                fontSize: '0.75rem', 
+                fontWeight: 900, 
+                color: timeLeft <= 5 ? '#FF4757' : (timeLeft <= 10 ? '#FFA502' : '#2ED573')
+              }}>
+                {timeLeft}s
+              </span>
+            </div>
+            <div style={{ width: '100%', height: '3px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
+              <div style={{
+                height: '100%',
+                width: `${Math.max(0, Math.min(100, (timeLeft / (maxTime || 30)) * 100))}%`,
+                background: timeLeft <= 5 
+                  ? 'linear-gradient(90deg, #FF4757, #FF6B81)' 
+                  : (timeLeft <= 10 ? 'linear-gradient(90deg, #FFA502, #FF7F50)' : 'linear-gradient(90deg, #2ED573, #10B981)'),
+                borderRadius: '2px',
+                transition: 'width 0.4s linear, background 0.3s ease'
+              }} />
+            </div>
+          </div>
+        )}
+
+        {/* Center Row: Fixed 46px height with Dice Cubes + Inline Balance */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', height: '46px', width: '100%' }}>
+          
+          {/* Pre-roll Home choice prompt if applicable */}
+          {allTokensInHome && canRoll && isDualDice ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#E9D5FF' }}>🏠 Choose:</span>
+              <button
+                onClick={() => handleRoll(0)}
+                style={{
+                  background: 'linear-gradient(135deg, #A855F7, #6B21A8)',
+                  color: '#FFF',
+                  border: '1.5px solid #E9D5FF',
+                  padding: '3px 6px',
+                  borderRadius: '6px',
+                  fontWeight: 800,
+                  fontSize: '0.68rem',
+                  cursor: 'pointer'
+                }}
+              >
+                🟣 Purple
+              </button>
+              <button
+                onClick={() => handleRoll(1)}
+                style={{
+                  background: 'linear-gradient(135deg, #FFFFFF, #E2E8F0)',
+                  color: '#0F172A',
+                  border: '1.5px solid #94A3B8',
+                  padding: '3px 6px',
+                  borderRadius: '6px',
+                  fontWeight: 800,
+                  fontSize: '0.68rem',
+                  cursor: 'pointer'
+                }}
+              >
+                ⚪ White
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Dice Cube(s) */}
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                {isDualDice ? (
+                  <>
+                    <div 
+                      onClick={() => handleRoll(0)}
+                      style={{ cursor: (isMyTurn && canRoll && !showingSixDelay) ? 'pointer' : 'default' }}
+                    >
+                      <SingleDiceCube val={displayVal1} rolling={rolling} isMyTurn={isMyTurn} canRoll={canRoll} showingSixDelay={showingSixDelay} theme="purple" label="Purple" size={diceSize} />
+                    </div>
+                    <div 
+                      onClick={() => handleRoll(0)}
+                      style={{ cursor: (isMyTurn && canRoll && !showingSixDelay) ? 'pointer' : 'default' }}
+                    >
+                      <SingleDiceCube val={displayVal2} rolling={rolling} isMyTurn={isMyTurn} canRoll={canRoll} showingSixDelay={showingSixDelay} theme="white" label="White" size={diceSize} />
+                    </div>
+                  </>
+                ) : (
+                  <div 
+                    onClick={() => handleRoll(0)}
+                    style={{ cursor: (isMyTurn && canRoll && !showingSixDelay) ? 'pointer' : 'default' }}
+                  >
+                    <SingleDiceCube val={displayDiceVal} rolling={rolling} isMyTurn={isMyTurn} canRoll={canRoll} showingSixDelay={showingSixDelay} theme="standard" label="Dice" size={diceSize} />
+                  </div>
+                )}
+              </div>
+
+              {/* Inline Balance Badges (rendered next to dice cubes with zero height impact) */}
+              {showBalance && (
+                <div style={{ 
+                  display: 'flex', 
+                  gap: '4px', 
+                  alignItems: 'center', 
+                  background: 'rgba(30, 41, 59, 0.9)', 
+                  padding: '2px 6px', 
+                  borderRadius: '12px', 
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                }}>
+                  <span style={{ fontSize: '0.62rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>
+                    Bal:
+                  </span>
+                  {dicePool.map((val, idx) => {
+                    const isSelected = (idx === selectedRollIndex && !canRoll);
+                    return (
+                      <button
+                        key={`pool-roll-${idx}`}
+                        onClick={() => isMyTurn && !canRoll && onSelectRoll && onSelectRoll(idx)}
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          border: isSelected ? '2px solid #6366F1' : '1px solid rgba(255,255,255,0.2)',
+                          background: isSelected 
+                            ? 'linear-gradient(135deg, #6366F1, #4F46E5)' 
+                            : (val === 6 ? '#22C55E' : '#334155'),
+                          color: '#FFFFFF',
+                          fontWeight: 800,
+                          fontSize: '0.75rem',
+                          cursor: (isMyTurn && !canRoll) ? 'pointer' : 'default',
+                          boxShadow: isSelected ? '0 0 8px rgba(99, 102, 241, 0.8)' : 'none',
+                          transform: isSelected ? 'scale(1.08)' : 'scale(1)',
+                          transition: 'all 0.15s ease',
+                          display: 'flex',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          padding: 0
+                        }}
+                      >
+                        {val}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Bottom: Fixed 14px Helper Text */}
+        <div style={{ height: '14px', lineHeight: '14px', fontSize: '0.7rem', fontWeight: 700, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>
+          {isMyTurn ? (
+            canRoll ? (
+              <span style={{ color: '#2ED573', animation: 'pulse 1s infinite' }}>
+                {dicePool.length > 0 ? '🎲 Roll Again!' : '⚡ Tap Dice to Roll!'}
+              </span>
+            ) : (dicePool && dicePool.length > 0) ? (
+              <span style={{ color: '#FFA502' }}>
+                {(allTokensInHome || isHomeDiceSelectionMode)
+                  ? '🏠 Select a dice then tap home token!'
+                  : '👉 Tap glowing token on board!'}
+              </span>
+            ) : (
+              <span style={{ color: '#94A3B8' }}>No valid moves.</span>
+            )
+          ) : (
+            <span style={{ color: '#94A3B8' }}>Waiting for {activeColor?.toUpperCase()}...</span>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: compact ? '4px' : '10px', width: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '100%' }}>
       
       {/* Real-Time Turn Timer Gauge */}
       {timeLeft !== undefined && timeLeft !== null && (
         <div style={{
           width: '100%',
           background: 'rgba(15, 23, 42, 0.85)',
-          borderRadius: compact ? '8px' : '12px',
+          borderRadius: '12px',
           border: '1.5px solid rgba(255, 255, 255, 0.15)',
-          padding: compact ? '4px 8px' : '8px 12px',
+          padding: '8px 12px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: compact ? '3px' : '5px',
+          gap: '5px',
           boxSizing: 'border-box',
           boxShadow: '0 4px 12px rgba(0,0,0,0.4)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-            <span style={{ fontSize: compact ? '0.7rem' : '0.75rem', fontWeight: 800, color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '4px' }}>
               ⏳ {isMyTurn ? 'Your Turn:' : `${activeColor?.toUpperCase()}'s Turn:`}
             </span>
             <span style={{ 
-              fontSize: compact ? '0.85rem' : '0.95rem', 
+              fontSize: '0.95rem', 
               fontWeight: 900, 
               color: timeLeft <= 5 ? '#FF4757' : (timeLeft <= 10 ? '#FFA502' : '#2ED573'),
               animation: timeLeft <= 5 ? 'pulse 0.6s infinite' : 'none'
@@ -193,7 +369,7 @@ export default function DiceRoller({
           </div>
 
           {/* Smooth Shrinking Progress Bar */}
-          <div style={{ width: '100%', height: compact ? '4px' : '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+          <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
             <div style={{
               height: '100%',
               width: `${Math.max(0, Math.min(100, (timeLeft / (maxTime || 30)) * 100))}%`,
@@ -213,7 +389,7 @@ export default function DiceRoller({
           background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(99, 102, 241, 0.25))',
           border: '1.5px solid #A855F7',
           borderRadius: '12px',
-          padding: compact ? '4px 8px' : '8px 12px',
+          padding: '8px 12px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -221,7 +397,7 @@ export default function DiceRoller({
           boxShadow: '0 4px 15px rgba(168, 85, 247, 0.3)',
           animation: 'fadeIn 0.2s ease-out'
         }}>
-          <span style={{ fontSize: compact ? '0.7rem' : '0.75rem', fontWeight: 800, color: '#E9D5FF', textAlign: 'center' }}>
+          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#E9D5FF', textAlign: 'center' }}>
             🏠 Tokens in Home! Choose 1 Dice:
           </span>
           <div style={{ display: 'flex', gap: '6px' }}>
@@ -263,7 +439,7 @@ export default function DiceRoller({
 
       {/* Dice Pool / Balance Badges */}
       {showBalance && (
-        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', background: '#1E293B', padding: compact ? '3px 8px' : '6px 14px', borderRadius: '16px', border: '1px solid #334155' }}>
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', background: '#1E293B', padding: '6px 14px', borderRadius: '16px', border: '1px solid #334155' }}>
           <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             Bal:
           </span>
@@ -274,8 +450,8 @@ export default function DiceRoller({
                 key={`pool-roll-${idx}`}
                 onClick={() => isMyTurn && !canRoll && onSelectRoll && onSelectRoll(idx)}
                 style={{
-                  width: compact ? '26px' : '32px',
-                  height: compact ? '26px' : '32px',
+                  width: '32px',
+                  height: '32px',
                   borderRadius: '50%',
                   border: isSelected ? '2px solid #6366F1' : '1px solid rgba(255,255,255,0.2)',
                   background: isSelected 
@@ -283,7 +459,7 @@ export default function DiceRoller({
                     : (val === 6 ? '#22C55E' : '#334155'),
                   color: '#FFFFFF',
                   fontWeight: 800,
-                  fontSize: compact ? '0.8rem' : '0.95rem',
+                  fontSize: '0.95rem',
                   cursor: (isMyTurn && !canRoll) ? 'pointer' : 'default',
                   boxShadow: isSelected ? '0 0 12px rgba(99, 102, 241, 0.6)' : 'none',
                   transform: isSelected ? 'scale(1.1)' : 'scale(1)',
@@ -302,18 +478,18 @@ export default function DiceRoller({
 
       {/* Main Dice Cube(s) */}
       <div 
-        style={{ display: 'flex', gap: compact ? '8px' : '12px' }}
+        style={{ display: 'flex', gap: '12px' }}
       >
         {isDualDice ? (
           <>
             <div 
-              onClick={() => (allTokensInHome && canRoll) ? handleRoll(0) : handleRoll(0)}
+              onClick={() => handleRoll(0)}
               style={{ cursor: (isMyTurn && canRoll && !showingSixDelay) ? 'pointer' : 'default' }}
             >
               <SingleDiceCube val={displayVal1} rolling={rolling} isMyTurn={isMyTurn} canRoll={canRoll} showingSixDelay={showingSixDelay} theme="purple" label="Purple" size={diceSize} />
             </div>
             <div 
-              onClick={() => (allTokensInHome && canRoll) ? handleRoll(1) : handleRoll(0)}
+              onClick={() => handleRoll(0)}
               style={{ cursor: (isMyTurn && canRoll && !showingSixDelay) ? 'pointer' : 'default' }}
             >
               <SingleDiceCube val={displayVal2} rolling={rolling} isMyTurn={isMyTurn} canRoll={canRoll} showingSixDelay={showingSixDelay} theme="white" label="White" size={diceSize} />
@@ -330,7 +506,7 @@ export default function DiceRoller({
       </div>
 
       {/* Helper text */}
-      <div style={{ fontSize: compact ? '0.75rem' : '0.85rem', fontWeight: 600, textAlign: 'center' }}>
+      <div style={{ fontSize: '0.85rem', fontWeight: 600, textAlign: 'center' }}>
         {isMyTurn ? (
           canRoll ? (
             <span style={{ color: '#2ED573', animation: 'pulse 1s infinite' }}>
