@@ -1154,24 +1154,6 @@ export default function Board4P({
           );
         })}
 
-        {/* Multi-Token Cell Count Badges for cells with 2+ tokens */}
-        {Object.keys(cellOccupants).map(cellKey => {
-          const count = cellOccupants[cellKey].length;
-          if (count <= 1 || cellKey.startsWith('yard-')) return null;
-
-          const sampleTok = allRenderTokens.find(t => t.cellKey === cellKey);
-          if (!sampleTok) return null;
-
-          return (
-            <g key={`cell-badge-${cellKey}`} transform={`translate(${sampleTok.baseCx}, ${sampleTok.baseCy})`} style={{ pointerEvents: 'none' }}>
-              <circle r="9.5" fill="#0F172A" stroke="#6366F1" strokeWidth="1.5" opacity="0.94" />
-              <text y="3.5" textAnchor="middle" fill="#FFFFFF" fontSize="9" fontWeight="900">
-                {count}
-              </text>
-            </g>
-          );
-        })}
-
         </g>
 
         {/* Contextual Roll Selection Popover near clicked token with 4-Way Smart Auto-Adjustment */}
