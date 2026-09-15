@@ -28,13 +28,76 @@ function getOccupantOffset(occupantIndex, totalOccupants) {
     ];
     return { ...offsets[occupantIndex % 3], r: 9 };
   }
-  const offsets = [
-    { dx: -10, dy: -10 },
-    { dx: 10, dy: -10 },
-    { dx: -10, dy: 10 },
-    { dx: 10, dy: 10 }
+  if (totalOccupants === 4) {
+    const offsets = [
+      { dx: -10, dy: -10 },
+      { dx: 10, dy: -10 },
+      { dx: -10, dy: 10 },
+      { dx: 10, dy: 10 }
+    ];
+    return { ...offsets[occupantIndex % 4], r: 8.5 };
+  }
+  if (totalOccupants === 5) {
+    const offsets = [
+      { dx: -11, dy: -11 },
+      { dx: 11, dy: -11 },
+      { dx: 0, dy: 0 },
+      { dx: -11, dy: 11 },
+      { dx: 11, dy: 11 }
+    ];
+    return { ...offsets[occupantIndex % 5], r: 7.5 };
+  }
+  if (totalOccupants === 6) {
+    const offsets = [
+      { dx: -12, dy: -9 },
+      { dx: 0, dy: -9 },
+      { dx: 12, dy: -9 },
+      { dx: -12, dy: 9 },
+      { dx: 0, dy: 9 },
+      { dx: 12, dy: 9 }
+    ];
+    return { ...offsets[occupantIndex % 6], r: 7.0 };
+  }
+  if (totalOccupants === 7) {
+    const offsets = [
+      { dx: -12, dy: -12 },
+      { dx: 0, dy: -12 },
+      { dx: 12, dy: -12 },
+      { dx: 0, dy: 0 },
+      { dx: -12, dy: 12 },
+      { dx: 0, dy: 12 },
+      { dx: 12, dy: 12 }
+    ];
+    return { ...offsets[occupantIndex % 7], r: 6.5 };
+  }
+  if (totalOccupants === 8) {
+    const offsets = [
+      { dx: -12, dy: -12 },
+      { dx: 0, dy: -12 },
+      { dx: 12, dy: -12 },
+      { dx: -12, dy: 0 },
+      { dx: 12, dy: 0 },
+      { dx: -12, dy: 12 },
+      { dx: 0, dy: 12 },
+      { dx: 12, dy: 12 }
+    ];
+    return { ...offsets[occupantIndex % 8], r: 6.2 };
+  }
+
+  const gridPositions = [
+    { dx: -13, dy: -13 }, { dx: 0, dy: -13 }, { dx: 13, dy: -13 },
+    { dx: -13, dy: 0 },   { dx: 0, dy: 0 },   { dx: 13, dy: 0 },
+    { dx: -13, dy: 13 },  { dx: 0, dy: 13 },  { dx: 13, dy: 13 }
   ];
-  return { ...offsets[occupantIndex % 4], r: 8.5 };
+
+  const pos = gridPositions[occupantIndex % 9];
+  const layer = Math.floor(occupantIndex / 9);
+
+  return {
+    dx: pos.dx + layer * 3,
+    dy: pos.dy + layer * 3,
+    r: Math.max(4.5, 6.0 - layer * 0.8)
+  };
 }
 
 function canTokenMoveWithRoll6P(step, roll, killRequired, hasKill, color, gameState) {
@@ -207,33 +270,32 @@ function YardPlayerCard6P({ color, player, isActive, isMe, teamName, finishStep 
       style={{
         background: isActive 
           ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98))' 
-          : player ? 'rgba(15, 23, 42, 0.85)' : 'rgba(15, 23, 42, 0.4)',
-        borderRadius: '10px',
-        border: isActive ? `2px solid ${COLOR_HEX_6P[color] || '#6366F1'}` : '1px solid rgba(255, 255, 255, 0.2)',
-        boxShadow: isActive ? `0 0 14px ${COLOR_HEX_6P[color]}90` : '0 4px 10px rgba(0, 0, 0, 0.5)',
-        padding: '4px 6px',
+          : player ? 'rgba(15, 23, 42, 0.88)' : 'rgba(15, 23, 42, 0.4)',
+        borderRadius: '12px',
+        border: isActive ? `2.5px solid ${COLOR_HEX_6P[color] || '#6366F1'}` : '1px solid rgba(255, 255, 255, 0.25)',
+        boxShadow: isActive ? `0 0 16px ${COLOR_HEX_6P[color]}90` : '0 4px 12px rgba(0, 0, 0, 0.6)',
+        padding: '5px 7px',
         color: '#FFF',
         display: 'flex',
         flexDirection: 'column',
-        gap: '2px',
-        fontSize: '9px',
+        gap: '3px',
         userSelect: 'none'
       }}
     >
       {/* Top Row: Name & Active Turn Badge & Target Throw Button */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '3px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0 }}>
           <div style={{
-            width: '6px',
-            height: '6px',
+            width: '7px',
+            height: '7px',
             borderRadius: '50%',
             background: player && player.connected ? '#2ED573' : '#64748B',
-            boxShadow: player && player.connected ? '0 0 5px #2ED573' : 'none',
+            boxShadow: player && player.connected ? '0 0 6px #2ED573' : 'none',
             flexShrink: 0
           }} />
           <span style={{ 
-            fontWeight: 800, 
-            fontSize: '10px',
+            fontWeight: 900, 
+            fontSize: '13px',
             whiteSpace: 'nowrap', 
             overflow: 'hidden', 
             textOverflow: 'ellipsis',
@@ -256,7 +318,7 @@ function YardPlayerCard6P({ color, player, isActive, isMe, teamName, finishStep 
                 border: '1px solid rgba(255, 255, 255, 0.35)',
                 borderRadius: '5px',
                 color: '#FFF',
-                fontSize: '10px',
+                fontSize: '11px',
                 padding: '1px 4px',
                 cursor: 'pointer',
                 display: 'flex',
@@ -271,9 +333,9 @@ function YardPlayerCard6P({ color, player, isActive, isMe, teamName, finishStep 
             <span style={{
               background: COLOR_HEX_6P[color],
               color: '#0F172A',
-              fontSize: '7px',
+              fontSize: '8.5px',
               fontWeight: 900,
-              padding: '1px 4px',
+              padding: '1px 5px',
               borderRadius: '4px',
               textTransform: 'uppercase',
               flexShrink: 0
@@ -285,20 +347,20 @@ function YardPlayerCard6P({ color, player, isActive, isMe, teamName, finishStep 
       </div>
 
       {/* Middle Row: Team Name & Winner Status */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '8px', color: '#94A3B8' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '9.5px', color: '#94A3B8', fontWeight: 700 }}>
         <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{teamName || color.toUpperCase()}</span>
-        {isWinner && <span style={{ color: '#F59E0B', fontWeight: 800 }}>🏆 WINNER</span>}
+        {isWinner && <span style={{ color: '#F59E0B', fontWeight: 900 }}>🏆 WINNER</span>}
       </div>
 
       {/* Bottom Row: Kills, Home, Appeals Badges */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '2px', paddingTop: '2px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-        <span title="Kills" style={{ fontSize: '8px', color: '#EF4444', fontWeight: 700 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '2px', paddingTop: '3px', borderTop: '1px solid rgba(255,255,255,0.15)' }}>
+        <span title="Kills" style={{ fontSize: '11.5px', color: '#EF4444', fontWeight: 900 }}>
           ⚔️ {player?.kills || 0}
         </span>
-        <span title="Tokens in Home" style={{ fontSize: '8px', color: '#10B981', fontWeight: 700 }}>
+        <span title="Tokens in Home" style={{ fontSize: '11.5px', color: '#10B981', fontWeight: 900 }}>
           🏠 {finishedCount}/4
         </span>
-        <span title="Appeals Remaining" style={{ fontSize: '8px', color: '#F59E0B', fontWeight: 700 }}>
+        <span title="Appeals Remaining" style={{ fontSize: '11.5px', color: '#F59E0B', fontWeight: 900 }}>
           ⚖️ {player?.appealsLeft ?? 3}
         </span>
       </div>
@@ -306,7 +368,7 @@ function YardPlayerCard6P({ color, player, isActive, isMe, teamName, finishStep 
   );
 }
 
-export default function Board6P({ gameState, myColor, onMoveToken, onOpenThrowMenu, onActionComplete }) {
+export default function Board6P({ gameState, myColor, timeLeft, onMoveToken, onOpenThrowMenu, onActionComplete }) {
   const [activePopup, setActivePopup] = useState(null);
   const [displaySteps, setDisplaySteps] = useState({});
   const [capturedLocks, setCapturedLocks] = useState({});
@@ -735,7 +797,7 @@ export default function Board6P({ gameState, myColor, onMoveToken, onOpenThrowMe
         {sectors.map((sec, idx) => (
           <g key={`sec-group-${idx}`}>
             <circle cx={sec.x} cy={sec.y} r="54" fill={sec.hex} opacity="0.85" stroke="#FFFFFF" strokeWidth="2" />
-            <foreignObject x={sec.x - 65} y={sec.y - 50} width="130" height="70" transform={`rotate(${-rotationAngle}, ${sec.x}, ${sec.y})`}>
+            <foreignObject x={sec.x - 72} y={sec.y - 52} width="144" height="80" transform={`rotate(${-rotationAngle}, ${sec.x}, ${sec.y})`}>
               <YardPlayerCard6P 
                 color={sec.color} 
                 player={players[sec.color]} 
@@ -779,9 +841,71 @@ export default function Board6P({ gameState, myColor, onMoveToken, onOpenThrowMe
           });
         })}
 
-        {/* Central Home Finish Ring */}
-        <circle cx={cx} cy={cy} r="45" fill="#0F172A" stroke="#6366F1" strokeWidth="4" />
-        <text x={cx} y={cy + 6} fill="#F8FAFC" fontSize="16" fontWeight="bold" textAnchor="middle" transform={`rotate(${-rotationAngle}, 400, 400)`}>LUDO</text>
+        {/* Central Turn & Decreasing Timer Circle Hub */}
+        <g transform={`rotate(${-rotationAngle}, ${cx}, ${cy})`}>
+          {/* Dark central backdrop circle */}
+          <circle cx={cx} cy={cy} r="52" fill="#0F172A" stroke="rgba(255,255,255,0.15)" strokeWidth="3" />
+
+          {/* Background Timer Track Ring */}
+          <circle
+            cx={cx}
+            cy={cy}
+            r="48"
+            fill="none"
+            stroke="rgba(255, 255, 255, 0.12)"
+            strokeWidth="4"
+          />
+
+          {/* Decreasing Circular Timer Border */}
+          {activeColor && (
+            <circle
+              cx={cx}
+              cy={cy}
+              r="48"
+              fill="none"
+              stroke={timeLeft <= 5 ? '#FF4757' : (COLOR_HEX_6P[activeColor] || '#6366F1')}
+              strokeWidth="4.5"
+              strokeDasharray={301.59}
+              strokeDashoffset={301.59 * (1 - Math.max(0, Math.min(1, (timeLeft ?? 30) / (gameState?.settings?.turnTimer || 30))))}
+              strokeLinecap="round"
+              transform={`rotate(-90 ${cx} ${cy})`}
+              style={{ transition: 'stroke-dashoffset 0.4s linear, stroke 0.3s' }}
+            />
+          )}
+
+          {/* Center Content: Active Player Name & Decreasing Time */}
+          {activeColor ? (
+            <>
+              <text
+                x={cx}
+                y={cy - 8}
+                fill={COLOR_HEX_6P[activeColor] || '#F8FAFC'}
+                fontSize="13"
+                fontWeight="800"
+                textAnchor="middle"
+                style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}
+              >
+                {((players?.[activeColor]?.name || activeColor).length > 9 
+                  ? (players?.[activeColor]?.name || activeColor).slice(0, 8) + '..' 
+                  : (players?.[activeColor]?.name || activeColor))}
+              </text>
+              <text
+                x={cx}
+                y={cy + 14}
+                fill={timeLeft <= 5 ? '#FF4757' : '#F8FAFC'}
+                fontSize="16"
+                fontWeight="900"
+                textAnchor="middle"
+              >
+                ⏱️{timeLeft ?? 30}s
+              </text>
+            </>
+          ) : (
+            <text x={cx} y={cy + 6} fill="#F8FAFC" fontSize="16" fontWeight="bold" textAnchor="middle">
+              LUDO
+            </text>
+          )}
+        </g>
 
         {/* Tokens Rendering */}
         {allRenderTokens.map(tok => {
@@ -851,44 +975,85 @@ export default function Board6P({ gameState, myColor, onMoveToken, onOpenThrowMe
           );
         })}
 
+        {/* Multi-Token Cell Count Badges for cells with 2+ tokens */}
+        {Object.keys(cellOccupants).map(cellKey => {
+          const count = cellOccupants[cellKey].length;
+          if (count <= 1 || cellKey.startsWith('yard-')) return null;
+
+          const sampleTok = allRenderTokens.find(t => t.cellKey === cellKey);
+          if (!sampleTok) return null;
+
+          return (
+            <g key={`cell-badge-${cellKey}`} transform={`translate(${sampleTok.baseCx}, ${sampleTok.baseCy})`} style={{ pointerEvents: 'none' }}>
+              <circle r="9.5" fill="#0F172A" stroke="#6366F1" strokeWidth="1.5" opacity="0.94" />
+              <text y="3.5" textAnchor="middle" fill="#FFFFFF" fontSize="9" fontWeight="900">
+                {count}
+              </text>
+            </g>
+          );
+        })}
+
         </g>
 
-        {/* Contextual Roll Selection Popover near clicked token */}
-        {activePopup && (
-          <g 
-            transform={`translate(${activePopup.coords.x}, ${Math.max(35, activePopup.coords.y - 38)})`}
-          >
-            <rect 
-              x={- (activePopup.options.length * 38 + 12) / 2} 
-              y="-18" 
-              width={activePopup.options.length * 38 + 12} 
-              height="36" 
-              rx="18" 
-              fill="#0F172A" 
-              stroke="#6366F1" 
-              strokeWidth="2" 
-              filter="drop-shadow(0 8px 16px rgba(0,0,0,0.7))"
-            />
-            {activePopup.options.map((opt, idx) => {
-              const btnX = - (activePopup.options.length * 38) / 2 + idx * 38 + 19;
-              return (
-                <g 
-                  key={`opt-${idx}`} 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    sounds.playTokenStep();
-                    onMoveToken(activePopup.tokenIndex, opt.rollIndex);
-                    setActivePopup(null);
-                  }}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <circle cx={btnX} cy="0" r="14" fill={opt.val === 6 ? '#22C55E' : '#6366F1'} stroke="#FFFFFF" strokeWidth="1.5" />
-                  <text x={btnX} y="4" fill="#FFFFFF" fontSize="12" fontWeight="bold" textAnchor="middle">{opt.val}</text>
-                </g>
-              );
-            })}
-          </g>
-        )}
+        {/* Contextual Roll Selection Popover near clicked token with 4-Way Smart Auto-Adjustment */}
+        {activePopup && (() => {
+          const btnWidth = 44;
+          const pad = 18;
+          const popupWidth = activePopup.options.length * btnWidth + pad;
+          const halfWidth = popupWidth / 2;
+          const margin = 20;
+          
+          // Smart X Clamping: guarantees popover never overflows left edge or right edge
+          const clampedX = Math.max(margin + halfWidth, Math.min(800 - margin - halfWidth, activePopup.coords.x));
+          
+          // Smart Y Placement: if near top edge (< 100), flips below token; if near bottom edge (> 700), flips above
+          const isNearTop = activePopup.coords.y < 100;
+          const isNearBottom = activePopup.coords.y > 700;
+          let popY = isNearTop 
+            ? activePopup.coords.y + 44 
+            : isNearBottom 
+              ? activePopup.coords.y - 44 
+              : activePopup.coords.y - 42;
+          
+          const clampedY = Math.max(margin + 22, Math.min(800 - margin - 22, popY));
+
+          return (
+            <g
+              transform={`translate(${clampedX}, ${clampedY})`}
+              style={{ filter: 'drop-shadow(0 12px 28px rgba(0,0,0,0.9))' }}
+            >
+              <rect
+                x={-halfWidth}
+                y="-22"
+                width={popupWidth}
+                height="44"
+                rx="22"
+                fill="#0F172A"
+                stroke="#6366F1"
+                strokeWidth="2.5"
+              />
+              {activePopup.options.map((opt, idx) => {
+                const btnX = -halfWidth + pad / 2 + idx * btnWidth + btnWidth / 2;
+                return (
+                  <g
+                    key={`opt-${idx}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      sounds.playTokenStep();
+                      onMoveToken(activePopup.tokenIndex, opt.rollIndex);
+                      setActivePopup(null);
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <circle cx={btnX} cy="0" r="20" fill="transparent" />
+                    <circle cx={btnX} cy="0" r="17" fill={opt.val === 6 ? '#22C55E' : '#6366F1'} stroke="#FFFFFF" strokeWidth="1.5" />
+                    <text x={btnX} y="5.5" fill="#FFFFFF" fontSize="14" fontWeight="900" textAnchor="middle">{opt.val}</text>
+                  </g>
+                );
+              })}
+            </g>
+          );
+        })()}
 
       </svg>
     </div>

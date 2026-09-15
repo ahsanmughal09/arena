@@ -177,7 +177,7 @@ function getOccupantOffset(occupantIndex, totalOccupants) {
     return { dx: 0, dy: 0, r: 13 };
   }
   if (totalOccupants === 2) {
-    const dx = occupantIndex === 0 ? -10 : 10;
+    const dx = occupantIndex === 0 ? -9 : 9;
     return { dx, dy: 0, r: 10 };
   }
   if (totalOccupants === 3) {
@@ -188,13 +188,76 @@ function getOccupantOffset(occupantIndex, totalOccupants) {
     ];
     return { ...offsets[occupantIndex % 3], r: 9 };
   }
-  const offsets = [
-    { dx: -10, dy: -10 },
-    { dx: 10, dy: -10 },
-    { dx: -10, dy: 10 },
-    { dx: 10, dy: 10 }
+  if (totalOccupants === 4) {
+    const offsets = [
+      { dx: -10, dy: -10 },
+      { dx: 10, dy: -10 },
+      { dx: -10, dy: 10 },
+      { dx: 10, dy: 10 }
+    ];
+    return { ...offsets[occupantIndex % 4], r: 8.5 };
+  }
+  if (totalOccupants === 5) {
+    const offsets = [
+      { dx: -11, dy: -11 },
+      { dx: 11, dy: -11 },
+      { dx: 0, dy: 0 },
+      { dx: -11, dy: 11 },
+      { dx: 11, dy: 11 }
+    ];
+    return { ...offsets[occupantIndex % 5], r: 7.5 };
+  }
+  if (totalOccupants === 6) {
+    const offsets = [
+      { dx: -12, dy: -9 },
+      { dx: 0, dy: -9 },
+      { dx: 12, dy: -9 },
+      { dx: -12, dy: 9 },
+      { dx: 0, dy: 9 },
+      { dx: 12, dy: 9 }
+    ];
+    return { ...offsets[occupantIndex % 6], r: 7.0 };
+  }
+  if (totalOccupants === 7) {
+    const offsets = [
+      { dx: -12, dy: -12 },
+      { dx: 0, dy: -12 },
+      { dx: 12, dy: -12 },
+      { dx: 0, dy: 0 },
+      { dx: -12, dy: 12 },
+      { dx: 0, dy: 12 },
+      { dx: 12, dy: 12 }
+    ];
+    return { ...offsets[occupantIndex % 7], r: 6.5 };
+  }
+  if (totalOccupants === 8) {
+    const offsets = [
+      { dx: -12, dy: -12 },
+      { dx: 0, dy: -12 },
+      { dx: 12, dy: -12 },
+      { dx: -12, dy: 0 },
+      { dx: 12, dy: 0 },
+      { dx: -12, dy: 12 },
+      { dx: 0, dy: 12 },
+      { dx: 12, dy: 12 }
+    ];
+    return { ...offsets[occupantIndex % 8], r: 6.2 };
+  }
+
+  const gridPositions = [
+    { dx: -13, dy: -13 }, { dx: 0, dy: -13 }, { dx: 13, dy: -13 },
+    { dx: -13, dy: 0 },   { dx: 0, dy: 0 },   { dx: 13, dy: 0 },
+    { dx: -13, dy: 13 },  { dx: 0, dy: 13 },  { dx: 13, dy: 13 }
   ];
-  return { ...offsets[occupantIndex % 4], r: 8.5 };
+
+  const pos = gridPositions[occupantIndex % 9];
+  const layer = Math.floor(occupantIndex / 9);
+
+  return {
+    dx: pos.dx + layer * 3,
+    dy: pos.dy + layer * 3,
+    r: Math.max(4.5, 6.0 - layer * 0.8)
+  };
 }
 
 function canTokenMoveWithRoll4P(step, roll, killRequired, hasKill, color, gameState) {
@@ -346,6 +409,7 @@ function getValidRollOptionsForToken(player, tokenIndex, dicePool, finishStep = 
 export default function Board4P({ 
   gameState, 
   myColor, 
+  timeLeft,
   onMoveToken, 
   onRollDice, 
   onSelectRoll, 
@@ -755,7 +819,7 @@ export default function Board4P({
         <circle cx="188" cy="52" r="22" fill="#0F172A" stroke="#FF4757" strokeWidth="2.5" />
         <circle cx="52" cy="188" r="22" fill="#0F172A" stroke="#FF4757" strokeWidth="2.5" />
         <circle cx="188" cy="188" r="22" fill="#0F172A" stroke="#FF4757" strokeWidth="2.5" />
-        <foreignObject x="55" y="75" width="130" height="76" transform={`rotate(${-rotationAngle}, 120, 113)`}>
+        <foreignObject x="45" y="71" width="150" height="84" transform={`rotate(${-rotationAngle}, 120, 113)`}>
           <div style={{
             width: '100%',
             height: '100%',
@@ -763,25 +827,25 @@ export default function Board4P({
             flexDirection: 'column',
             justifyContent: 'space-between',
             alignItems: 'center',
-            background: 'rgba(15, 23, 42, 0.85)',
+            background: 'rgba(15, 23, 42, 0.9)',
             backdropFilter: 'blur(8px)',
             borderRadius: '12px',
-            border: activeColor === 'red' ? '2px solid #FF4757' : '1px solid rgba(255, 71, 87, 0.35)',
-            boxShadow: activeColor === 'red' ? '0 0 12px rgba(255, 71, 87, 0.6)' : '0 4px 10px rgba(0,0,0,0.5)',
-            padding: '5px 8px',
+            border: activeColor === 'red' ? '2.5px solid #FF4757' : '1px solid rgba(255, 71, 87, 0.4)',
+            boxShadow: activeColor === 'red' ? '0 0 16px rgba(255, 71, 87, 0.7)' : '0 4px 12px rgba(0,0,0,0.6)',
+            padding: '6px 9px',
             boxSizing: 'border-box',
             color: '#FFF',
             userSelect: 'none'
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-              <span style={{ fontSize: '10px', fontWeight: 900, color: '#FF4757', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+              <span style={{ fontSize: '13px', fontWeight: 900, color: '#FF4757', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
                 {players['red']?.name || 'RED'}
               </span>
-              <span style={{ fontSize: '7.5px', color: '#94A3B8', fontWeight: 600 }}>
+              <span style={{ fontSize: '9.5px', color: '#94A3B8', fontWeight: 700 }}>
                 {gameState?.teams?.['red'] || 'RED'}
               </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '8.5px', fontWeight: 800, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '3px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '11.5px', fontWeight: 900, borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: '4px' }}>
               <span style={{ color: '#EF4444' }} title="Kills">⚔️ {players['red']?.kills || 0}</span>
               <span style={{ color: '#10B981' }} title="Home Tokens">🏠 {players['red']?.tokens?.filter(s => s === 56).length || 0}/4</span>
               <span style={{ color: '#F59E0B' }} title="Appeals Left">⚖️ {players['red']?.appealsLeft ?? 3}</span>
@@ -794,7 +858,7 @@ export default function Board4P({
         <circle cx="548" cy="52" r="22" fill="#0F172A" stroke="#2ED573" strokeWidth="2.5" />
         <circle cx="412" cy="188" r="22" fill="#0F172A" stroke="#2ED573" strokeWidth="2.5" />
         <circle cx="548" cy="188" r="22" fill="#0F172A" stroke="#2ED573" strokeWidth="2.5" />
-        <foreignObject x="415" y="75" width="130" height="76" transform={`rotate(${-rotationAngle}, 480, 113)`}>
+        <foreignObject x="405" y="71" width="150" height="84" transform={`rotate(${-rotationAngle}, 480, 113)`}>
           <div style={{
             width: '100%',
             height: '100%',
@@ -802,25 +866,25 @@ export default function Board4P({
             flexDirection: 'column',
             justifyContent: 'space-between',
             alignItems: 'center',
-            background: 'rgba(15, 23, 42, 0.85)',
+            background: 'rgba(15, 23, 42, 0.9)',
             backdropFilter: 'blur(8px)',
             borderRadius: '12px',
-            border: activeColor === 'green' ? '2px solid #2ED573' : '1px solid rgba(46, 213, 115, 0.35)',
-            boxShadow: activeColor === 'green' ? '0 0 12px rgba(46, 213, 115, 0.6)' : '0 4px 10px rgba(0,0,0,0.5)',
-            padding: '5px 8px',
+            border: activeColor === 'green' ? '2.5px solid #2ED573' : '1px solid rgba(46, 213, 115, 0.4)',
+            boxShadow: activeColor === 'green' ? '0 0 16px rgba(46, 213, 115, 0.7)' : '0 4px 12px rgba(0,0,0,0.6)',
+            padding: '6px 9px',
             boxSizing: 'border-box',
             color: '#FFF',
             userSelect: 'none'
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-              <span style={{ fontSize: '10px', fontWeight: 900, color: '#2ED573', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+              <span style={{ fontSize: '13px', fontWeight: 900, color: '#2ED573', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
                 {players['green']?.name || 'GREEN'}
               </span>
-              <span style={{ fontSize: '7.5px', color: '#94A3B8', fontWeight: 600 }}>
+              <span style={{ fontSize: '9.5px', color: '#94A3B8', fontWeight: 700 }}>
                 {gameState?.teams?.['green'] || 'GREEN'}
               </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '8.5px', fontWeight: 800, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '3px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '11.5px', fontWeight: 900, borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: '4px' }}>
               <span style={{ color: '#EF4444' }} title="Kills">⚔️ {players['green']?.kills || 0}</span>
               <span style={{ color: '#10B981' }} title="Home Tokens">🏠 {players['green']?.tokens?.filter(s => s === 56).length || 0}/4</span>
               <span style={{ color: '#F59E0B' }} title="Appeals Left">⚖️ {players['green']?.appealsLeft ?? 3}</span>
@@ -833,7 +897,7 @@ export default function Board4P({
         <circle cx="548" cy="412" r="22" fill="#0F172A" stroke="#FFA502" strokeWidth="2.5" />
         <circle cx="412" cy="548" r="22" fill="#0F172A" stroke="#FFA502" strokeWidth="2.5" />
         <circle cx="548" cy="548" r="22" fill="#0F172A" stroke="#FFA502" strokeWidth="2.5" />
-        <foreignObject x="415" y="435" width="130" height="76" transform={`rotate(${-rotationAngle}, 480, 473)`}>
+        <foreignObject x="405" y="431" width="150" height="84" transform={`rotate(${-rotationAngle}, 480, 473)`}>
           <div style={{
             width: '100%',
             height: '100%',
@@ -841,25 +905,25 @@ export default function Board4P({
             flexDirection: 'column',
             justifyContent: 'space-between',
             alignItems: 'center',
-            background: 'rgba(15, 23, 42, 0.85)',
+            background: 'rgba(15, 23, 42, 0.9)',
             backdropFilter: 'blur(8px)',
             borderRadius: '12px',
-            border: activeColor === 'yellow' ? '2px solid #FFA502' : '1px solid rgba(255, 165, 2, 0.35)',
-            boxShadow: activeColor === 'yellow' ? '0 0 12px rgba(255, 165, 2, 0.6)' : '0 4px 10px rgba(0,0,0,0.5)',
-            padding: '5px 8px',
+            border: activeColor === 'yellow' ? '2.5px solid #FFA502' : '1px solid rgba(255, 165, 2, 0.4)',
+            boxShadow: activeColor === 'yellow' ? '0 0 16px rgba(255, 165, 2, 0.7)' : '0 4px 12px rgba(0,0,0,0.6)',
+            padding: '6px 9px',
             boxSizing: 'border-box',
             color: '#FFF',
             userSelect: 'none'
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-              <span style={{ fontSize: '10px', fontWeight: 900, color: '#FFA502', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+              <span style={{ fontSize: '13px', fontWeight: 900, color: '#FFA502', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
                 {players['yellow']?.name || 'YELLOW'}
               </span>
-              <span style={{ fontSize: '7.5px', color: '#94A3B8', fontWeight: 600 }}>
+              <span style={{ fontSize: '9.5px', color: '#94A3B8', fontWeight: 700 }}>
                 {gameState?.teams?.['yellow'] || 'YELLOW'}
               </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '8.5px', fontWeight: 800, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '3px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '11.5px', fontWeight: 900, borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: '4px' }}>
               <span style={{ color: '#EF4444' }} title="Kills">⚔️ {players['yellow']?.kills || 0}</span>
               <span style={{ color: '#10B981' }} title="Home Tokens">🏠 {players['yellow']?.tokens?.filter(s => s === 56).length || 0}/4</span>
               <span style={{ color: '#F59E0B' }} title="Appeals Left">⚖️ {players['yellow']?.appealsLeft ?? 3}</span>
@@ -872,7 +936,7 @@ export default function Board4P({
         <circle cx="188" cy="412" r="22" fill="#0F172A" stroke="#1E90FF" strokeWidth="2.5" />
         <circle cx="52" cy="548" r="22" fill="#0F172A" stroke="#1E90FF" strokeWidth="2.5" />
         <circle cx="188" cy="548" r="22" fill="#0F172A" stroke="#1E90FF" strokeWidth="2.5" />
-        <foreignObject x="55" y="435" width="130" height="76" transform={`rotate(${-rotationAngle}, 120, 473)`}>
+        <foreignObject x="45" y="431" width="150" height="84" transform={`rotate(${-rotationAngle}, 120, 473)`}>
           <div style={{
             width: '100%',
             height: '100%',
@@ -880,25 +944,25 @@ export default function Board4P({
             flexDirection: 'column',
             justifyContent: 'space-between',
             alignItems: 'center',
-            background: 'rgba(15, 23, 42, 0.85)',
+            background: 'rgba(15, 23, 42, 0.9)',
             backdropFilter: 'blur(8px)',
             borderRadius: '12px',
-            border: activeColor === 'blue' ? '2px solid #1E90FF' : '1px solid rgba(30, 144, 255, 0.35)',
-            boxShadow: activeColor === 'blue' ? '0 0 12px rgba(30, 144, 255, 0.6)' : '0 4px 10px rgba(0,0,0,0.5)',
-            padding: '5px 8px',
+            border: activeColor === 'blue' ? '2.5px solid #1E90FF' : '1px solid rgba(30, 144, 255, 0.4)',
+            boxShadow: activeColor === 'blue' ? '0 0 16px rgba(30, 144, 255, 0.7)' : '0 4px 12px rgba(0,0,0,0.6)',
+            padding: '6px 9px',
             boxSizing: 'border-box',
             color: '#FFF',
             userSelect: 'none'
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-              <span style={{ fontSize: '10px', fontWeight: 900, color: '#1E90FF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+              <span style={{ fontSize: '13px', fontWeight: 900, color: '#1E90FF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
                 {players['blue']?.name || 'BLUE'}
               </span>
-              <span style={{ fontSize: '7.5px', color: '#94A3B8', fontWeight: 600 }}>
+              <span style={{ fontSize: '9.5px', color: '#94A3B8', fontWeight: 700 }}>
                 {gameState?.teams?.['blue'] || 'BLUE'}
               </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '8.5px', fontWeight: 800, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '3px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '11.5px', fontWeight: 900, borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: '4px' }}>
               <span style={{ color: '#EF4444' }} title="Kills">⚔️ {players['blue']?.kills || 0}</span>
               <span style={{ color: '#10B981' }} title="Home Tokens">🏠 {players['blue']?.tokens?.filter(s => s === 56).length || 0}/4</span>
               <span style={{ color: '#F59E0B' }} title="Appeals Left">⚖️ {players['blue']?.appealsLeft ?? 3}</span>
@@ -946,8 +1010,72 @@ export default function Board4P({
         <polygon points="360,240 360,360 300,300" fill="#FFA502" />
         <polygon points="360,360 240,360 300,300" fill="#1E90FF" />
         <polygon points="240,360 240,240 300,300" fill="#FF4757" />
-        <circle cx="300" cy="300" r="28" fill="#0F172A" stroke="#F8FAFC" strokeWidth="3" />
-        <text x="300" y="306" fill="#F8FAFC" fontSize="16" fontWeight="bold" textAnchor="middle" transform={`rotate(${-rotationAngle}, 300, 300)`}>LUDO</text>
+
+        {/* Central Turn & Decreasing Timer Circle Hub */}
+        <g transform={`rotate(${-rotationAngle}, 300, 300)`}>
+          {/* Dark central backdrop circle */}
+          <circle cx="300" cy="300" r="44" fill="#0F172A" stroke="rgba(255,255,255,0.15)" strokeWidth="3" />
+
+          {/* Background Timer Track Ring */}
+          <circle
+            cx="300"
+            cy="300"
+            r="40"
+            fill="none"
+            stroke="rgba(255, 255, 255, 0.12)"
+            strokeWidth="4"
+          />
+
+          {/* Decreasing Circular Timer Border */}
+          {activeColor && (
+            <circle
+              cx="300"
+              cy="300"
+              r="40"
+              fill="none"
+              stroke={timeLeft <= 5 ? '#FF4757' : (COLOR_HEX_4P[activeColor] || '#6366F1')}
+              strokeWidth="4.5"
+              strokeDasharray={251.33}
+              strokeDashoffset={251.33 * (1 - Math.max(0, Math.min(1, (timeLeft ?? 30) / (gameState?.settings?.turnTimer || 30))))}
+              strokeLinecap="round"
+              transform="rotate(-90 300 300)"
+              style={{ transition: 'stroke-dashoffset 0.4s linear, stroke 0.3s' }}
+            />
+          )}
+
+          {/* Center Content: Active Player Name & Decreasing Time */}
+          {activeColor ? (
+            <>
+              <text
+                x="300"
+                y="292"
+                fill={COLOR_HEX_4P[activeColor] || '#F8FAFC'}
+                fontSize="12"
+                fontWeight="800"
+                textAnchor="middle"
+                style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}
+              >
+                {((players?.[activeColor]?.name || activeColor).length > 8 
+                  ? (players?.[activeColor]?.name || activeColor).slice(0, 7) + '..' 
+                  : (players?.[activeColor]?.name || activeColor))}
+              </text>
+              <text
+                x="300"
+                y="312"
+                fill={timeLeft <= 5 ? '#FF4757' : '#F8FAFC'}
+                fontSize="15"
+                fontWeight="900"
+                textAnchor="middle"
+              >
+                ⏱️{timeLeft ?? 30}s
+              </text>
+            </>
+          ) : (
+            <text x="300" y="306" fill="#F8FAFC" fontSize="16" fontWeight="bold" textAnchor="middle">
+              LUDO
+            </text>
+          )}
+        </g>
 
         {/* Tokens Rendering */}
         {allRenderTokens.map(tok => {
@@ -1026,39 +1154,59 @@ export default function Board4P({
           );
         })}
 
+        {/* Multi-Token Cell Count Badges for cells with 2+ tokens */}
+        {Object.keys(cellOccupants).map(cellKey => {
+          const count = cellOccupants[cellKey].length;
+          if (count <= 1 || cellKey.startsWith('yard-')) return null;
+
+          const sampleTok = allRenderTokens.find(t => t.cellKey === cellKey);
+          if (!sampleTok) return null;
+
+          return (
+            <g key={`cell-badge-${cellKey}`} transform={`translate(${sampleTok.baseCx}, ${sampleTok.baseCy})`} style={{ pointerEvents: 'none' }}>
+              <circle r="9.5" fill="#0F172A" stroke="#6366F1" strokeWidth="1.5" opacity="0.94" />
+              <text y="3.5" textAnchor="middle" fill="#FFFFFF" fontSize="9" fontWeight="900">
+                {count}
+              </text>
+            </g>
+          );
+        })}
+
         </g>
 
-        {/* Contextual Roll Selection Popover near clicked token with Smart Clamping & Edge Flip */}
+        {/* Contextual Roll Selection Popover near clicked token with 4-Way Smart Auto-Adjustment */}
         {activePopup && (() => {
-          const btnWidth = 40;
-          const pad = 14;
+          const btnWidth = 42;
+          const pad = 16;
           const popupWidth = activePopup.options.length * btnWidth + pad;
           const halfWidth = popupWidth / 2;
+          const margin = 16;
           
-          // Smart X Clamping: prevents popover from ever overflowing left (x < 10) or right (x > 590)
-          const clampedX = Math.max(10 + halfWidth, Math.min(590 - halfWidth, activePopup.coords.x));
+          // Smart X Clamping: guarantees popover never overflows left edge or right edge
+          const clampedX = Math.max(margin + halfWidth, Math.min(600 - margin - halfWidth, activePopup.coords.x));
           
-          // Smart Y Placement: if near top edge (< 55), flips below token; if near bottom edge (> 545), stays above
-          const isNearTop = activePopup.coords.y < 55;
-          const isNearBottom = activePopup.coords.y > 545;
+          // Smart Y Placement: if near top edge (< 80), flips below token; if near bottom edge (> 520), flips above
+          const isNearTop = activePopup.coords.y < 80;
+          const isNearBottom = activePopup.coords.y > 520;
           let popY = isNearTop 
-            ? activePopup.coords.y + 38 
+            ? activePopup.coords.y + 42 
             : isNearBottom 
-              ? activePopup.coords.y - 38 
-              : activePopup.coords.y - 36;
-          popY = Math.max(24, Math.min(576, popY));
+              ? activePopup.coords.y - 42 
+              : activePopup.coords.y - 40;
+          
+          const clampedY = Math.max(margin + 20, Math.min(600 - margin - 20, popY));
 
           return (
             <g
-              transform={`translate(${clampedX}, ${popY})`}
-              style={{ filter: 'drop-shadow(0 10px 25px rgba(0,0,0,0.85))' }}
+              transform={`translate(${clampedX}, ${clampedY})`}
+              style={{ filter: 'drop-shadow(0 12px 28px rgba(0,0,0,0.9))' }}
             >
               <rect
                 x={-halfWidth}
-                y="-20"
+                y="-21"
                 width={popupWidth}
-                height="40"
-                rx="20"
+                height="42"
+                rx="21"
                 fill="#0F172A"
                 stroke="#6366F1"
                 strokeWidth="2.5"
@@ -1076,9 +1224,9 @@ export default function Board4P({
                     }}
                     style={{ cursor: 'pointer' }}
                   >
-                    <circle cx={btnX} cy="0" r="18" fill="transparent" />
-                    <circle cx={btnX} cy="0" r="15" fill={opt.val === 6 ? '#22C55E' : '#6366F1'} stroke="#FFFFFF" strokeWidth="1.5" />
-                    <text x={btnX} y="4.5" fill="#FFFFFF" fontSize="13" fontWeight="900" textAnchor="middle">{opt.val}</text>
+                    <circle cx={btnX} cy="0" r="19" fill="transparent" />
+                    <circle cx={btnX} cy="0" r="16" fill={opt.val === 6 ? '#22C55E' : '#6366F1'} stroke="#FFFFFF" strokeWidth="1.5" />
+                    <text x={btnX} y="5" fill="#FFFFFF" fontSize="14" fontWeight="900" textAnchor="middle">{opt.val}</text>
                   </g>
                 );
               })}

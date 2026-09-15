@@ -1,5 +1,6 @@
 import React from 'react';
 import { Shield, User, Crown, ArrowRight } from 'lucide-react';
+import { sounds } from '../utils/audio';
 
 const COLOR_HEX = {
   red: '#FF4757',
@@ -10,7 +11,7 @@ const COLOR_HEX = {
   purple: '#A55EEA'
 };
 
-export default function PlayerCard({ color, player, isActive, isMe, teamName, finishStep, timeLeft, turnTimer, onOpenThrowMenu }) {
+export default function PlayerCard({ color, player, isActive, isMe, teamName, finishStep, timeLeft, turnTimer, onOpenThrowMenu, onOpenReactionPicker, onSendReaction }) {
   if (!player) {
     return (
       <div data-player-color={color} className="glass-panel" style={{ padding: '12px 16px', opacity: 0.4, display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -35,7 +36,8 @@ export default function PlayerCard({ color, player, isActive, isMe, teamName, fi
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        transition: 'all 0.3s ease'
+        transition: 'all 0.3s ease',
+        position: 'relative'
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -66,6 +68,37 @@ export default function PlayerCard({ color, player, isActive, isMe, teamName, fi
               {player.name} {isMe && <span style={{ fontSize: '0.75rem', color: '#818CF8' }}>(You)</span>}
             </span>
             {finishedCount === 4 && <Crown size={16} color="#FFA502" />}
+            
+            {/* React Option Button */}
+            {(onOpenReactionPicker || onSendReaction) && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  sounds.playClick();
+                  if (onOpenReactionPicker) onOpenReactionPicker();
+                }}
+                title="React with Emoji"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.35), rgba(168, 85, 247, 0.35))',
+                  border: '1px solid rgba(255, 255, 255, 0.35)',
+                  borderRadius: '6px',
+                  color: '#FFF',
+                  fontSize: '11px',
+                  padding: '2px 6px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '2px',
+                  fontWeight: 700,
+                  transition: 'all 0.2s ease',
+                  lineHeight: 1
+                }}
+              >
+                <span>😂</span>
+                <span>React</span>
+              </button>
+            )}
+
             {!isMe && onOpenThrowMenu && (
               <button
                 onClick={(e) => {

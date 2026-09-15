@@ -73,6 +73,9 @@ export default function VictoryModal({ winner, players = {}, colors = [], teams 
     return b.kills - a.kills;
   });
 
+  const winningPlayer = playerStats.find(p => p.isWinner) || playerStats[0];
+  const winnerDisplayName = winningPlayer ? winningPlayer.name : winner;
+
   const getRankBadge = (index, isWinner) => {
     if (isWinner) return '👑';
     if (index === 0) return '🥇';
@@ -90,6 +93,7 @@ export default function VictoryModal({ winner, players = {}, colors = [], teams 
       bottom: 0,
       background: 'rgba(15, 23, 42, 0.88)',
       backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center',
@@ -102,7 +106,8 @@ export default function VictoryModal({ winner, players = {}, colors = [], teams 
         maxHeight: '90vh',
         padding: '28px 24px', 
         textAlign: 'center', 
-        animation: 'scaleUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+        animation: 'winCardCenterPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        transformOrigin: 'center center',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden'
@@ -124,12 +129,12 @@ export default function VictoryModal({ winner, players = {}, colors = [], teams 
           <Trophy size={40} color="#FFF" />
         </div>
 
-        <h2 style={{ fontSize: '2rem', fontWeight: 800, color: '#FFF', marginBottom: '4px' }}>
+        <h2 style={{ fontSize: '2rem', fontWeight: 900, color: '#FFF', marginBottom: '4px', letterSpacing: '1px' }}>
           VICTORY!
         </h2>
 
-        <p style={{ fontSize: '1.15rem', fontWeight: 700, color: '#2ED573', marginBottom: '20px' }}>
-          👑 {winner} Won The Match!
+        <p style={{ fontSize: '1.25rem', fontWeight: 800, color: '#2ED573', marginBottom: '20px' }}>
+          🎉 {winnerDisplayName.toUpperCase()} WINS! 🎉
         </p>
 
         {/* Overall Game Stats Section */}

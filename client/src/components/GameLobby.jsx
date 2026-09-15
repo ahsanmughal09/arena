@@ -25,8 +25,8 @@ export default function GameLobby({ roomCode, slots, settings, isHost, myColor, 
   const maxPlayers = settings.mode === '4P' ? 4 : 6;
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
-      <div className="glass-panel" style={{ width: '100%', maxWidth: '540px', padding: '32px' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '16px' }}>
+      <div className="glass-panel match-lobby-card" style={{ width: '100%', maxWidth: '540px' }}>
         
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
@@ -66,7 +66,7 @@ export default function GameLobby({ roomCode, slots, settings, isHost, myColor, 
           <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#94A3B8', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             Connected Players
           </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div className="lobby-player-grid">
             {(settings.mode === '4P' ? ['red', 'green', 'yellow', 'blue'] : ['red', 'green', 'yellow', 'blue', 'orange', 'purple']).map(color => {
               const slot = slots ? slots[color] : null;
               const isConnected = slot && slot.connected;

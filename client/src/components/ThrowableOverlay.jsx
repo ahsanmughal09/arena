@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { sounds } from '../utils/audio';
 
 const EMOJI_MAP = {
@@ -15,11 +15,14 @@ const EMOJI_MAP = {
 export default function ThrowableOverlay({ activeThrows = [] }) {
   const [flyingItems, setFlyingItems] = useState([]);
   const [impacts, setImpacts] = useState([]);
+  const processedIdsRef = useRef(new Set());
 
   useEffect(() => {
     activeThrows.forEach((t) => {
-      // Check if already processed
-      if (flyingItems.some(i => i.id === t.id) || impacts.some(i => i.id === t.id)) return;
+      if (!t || !t.id) return;
+      // Guarantee each throw action is processed EXACTLY once
+      if (processedIdsRef.current.has(t.id)) return;
+      processedIdsRef.current.add(t.id);
 
       // Default screen position coordinates per color
       const defaultColorCoords = {
@@ -31,32 +34,40 @@ export default function ThrowableOverlay({ activeThrows = [] }) {
         purple: { x: window.innerWidth * 0.15, y: window.innerHeight * 0.5 }
       };
 
-      // Find source & target element bounding rects
-      const fromEl = document.querySelector(`[data-player-color="${t.fromColor}"]`);
-      const targetEl = document.querySelector(`[data-player-color="${t.targetColor}"]`);
+      // Helper to find exact visible element center on screen
+      const getVisibleElementCenter = (color) => {
+        const elements = document.querySelectorAll(
+          `[data-corner-pod="${color}"], [data-player-color="${color}"]`
+        );
+        for (const el of elements) {
+          const rect = el.getBoundingClientRect();
+          if (
+            rect.width > 0 &&
+            rect.height > 0 &&
+            rect.top < window.innerHeight &&
+            rect.bottom > 0 &&
+            rect.left < window.innerWidth &&
+            rect.right > 0
+          ) {
+            return {
+              x: rect.left + rect.width / 2,
+              y: rect.top + rect.height / 2
+            };
+          }
+        }
+        return null;
+      };
+
+      const fromCenter = getVisibleElementCenter(t.fromColor);
+      const targetCenter = getVisibleElementCenter(t.targetColor);
 
       const defaultStart = defaultColorCoords[t.fromColor] || { x: window.innerWidth / 2, y: window.innerHeight / 2 };
       const defaultEnd = defaultColorCoords[t.targetColor] || { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 
-      let startX = defaultStart.x;
-      let startY = defaultStart.y;
-      let endX = defaultEnd.x;
-      let endY = defaultEnd.y;
-
-      if (fromEl) {
-        const rect = fromEl.getBoundingClientRect();
-        if (rect.width > 0 && rect.height > 0) {
-          startX = rect.left + rect.width / 2;
-          startY = rect.top + rect.height / 2;
-        }
-      }
-      if (targetEl) {
-        const rect = targetEl.getBoundingClientRect();
-        if (rect.width > 0 && rect.height > 0) {
-          endX = rect.left + rect.width / 2;
-          endY = rect.top + rect.height / 2;
-        }
-      }
+      const startX = fromCenter ? fromCenter.x : defaultStart.x;
+      const startY = fromCenter ? fromCenter.y : defaultStart.y;
+      const endX = targetCenter ? targetCenter.x : defaultEnd.x;
+      const endY = targetCenter ? targetCenter.y : defaultEnd.y;
 
       // Play Whoosh sound
       sounds.playWhoosh();

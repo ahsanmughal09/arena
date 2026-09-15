@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Shield, Timer, Play, LogIn } from 'lucide-react';
 import { sounds } from '../utils/audio';
+import InstallPwaBanner from './InstallPwaBanner';
 
 export default function HomeLobby({ onCreateRoom, onJoinRoom, showAlert }) {
   const [name, setName] = useState('');
@@ -58,7 +59,11 @@ export default function HomeLobby({ onCreateRoom, onJoinRoom, showAlert }) {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
+      
+      {/* PWA Mobile Installation Prompt Banner */}
+      <InstallPwaBanner />
+
       <div className="glass-panel" style={{ width: '100%', maxWidth: '480px', padding: '32px' }}>
         
         {/* Title Banner */}

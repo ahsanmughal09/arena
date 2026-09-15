@@ -635,7 +635,7 @@ circle.token-body, circle.token-moveable-ring, circle.token-specular {
   .game-main-layout {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
     flex: 1;
     min-height: 0;
@@ -651,12 +651,13 @@ circle.token-body, circle.token-moveable-ring, circle.token-specular {
   .center-game-wrapper {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
     height: 100%;
     width: 100%;
     max-width: min(540px, 100vw);
     gap: 3px;
+    padding: 0 !important;
   }
 
   .mobile-pods-row {
@@ -681,21 +682,26 @@ circle.token-body, circle.token-moveable-ring, circle.token-specular {
   }
 
   .center-board-col {
-    flex: 1;
+    flex: 0 1 auto;
     width: 100%;
+    height: auto;
     min-height: 0;
-    max-height: calc(100dvh - 192px);
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 0;
-    margin: 0;
+    padding: 0 !important;
+    margin: 0 !important;
   }
 
   .board-4p-wrapper, .board-6p-wrapper {
-    max-width: min(100%, calc(100dvh - 196px));
-    max-height: min(100%, calc(100dvh - 196px));
+    width: min(100%, calc(100dvh - 186px));
+    height: min(100%, calc(100dvh - 186px));
+    max-width: min(100%, calc(100dvh - 186px));
+    max-height: min(100%, calc(100dvh - 186px));
+    aspect-ratio: 1 / 1;
     border-radius: 14px;
+    margin: 0 auto;
+    padding: 0 !important;
   }
 }
 
@@ -707,7 +713,7 @@ circle.token-body, circle.token-moveable-ring, circle.token-specular {
     min-height: 38px;
     max-height: 38px;
     flex-wrap: nowrap;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .top-bar-title {
@@ -776,12 +782,20 @@ circle.token-body, circle.token-moveable-ring, circle.token-specular {
   }
 
   .center-board-col {
-    max-height: calc(100dvh - 186px);
+    flex: 0 1 auto;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    padding: 0 !important;
+    margin: 0 !important;
   }
 
   .board-4p-wrapper, .board-6p-wrapper {
-    max-width: min(100%, calc(100dvh - 188px));
-    max-height: min(100%, calc(100dvh - 188px));
+    width: min(100%, calc(100dvh - 180px));
+    height: min(100%, calc(100dvh - 180px));
+    max-width: min(100%, calc(100dvh - 180px));
+    max-height: min(100%, calc(100dvh - 180px));
+    padding: 0 !important;
   }
 }
 
@@ -789,6 +803,13 @@ circle.token-body, circle.token-moveable-ring, circle.token-specular {
 .mobile-drawer-backdrop {
   position: fixed;
   inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -797,13 +818,16 @@ circle.token-body, circle.token-moveable-ring, circle.token-specular {
   justify-content: center;
   align-items: flex-end;
   animation: fadeIn 0.2s ease-out;
+  touch-action: none;
+  overflow: hidden;
 }
 
 .mobile-drawer-content {
   width: 100%;
   max-width: 480px;
-  height: 75vh;
-  max-height: 80dvh;
+  height: 70vh;
+  height: 70dvh;
+  max-height: 75dvh;
   background: rgba(15, 23, 42, 0.96);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 20px 20px 0 0;
@@ -812,6 +836,8 @@ circle.token-body, circle.token-moveable-ring, circle.token-specular {
   overflow: hidden;
   box-shadow: 0 -12px 35px rgba(0, 0, 0, 0.8);
   animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  touch-action: pan-y;
+  overscroll-behavior: contain;
 }
 
 /* ==========================================================================
@@ -859,4 +885,116 @@ circle.token-body, circle.token-moveable-ring, circle.token-specular {
   animation: pillPulse 1.4s infinite cubic-bezier(0.4, 0, 0.6, 1);
 }
 
+/* ==========================================================================
+   Real-Time Player Emoji Reactions Animations & Dock Styling
+   ========================================================================== */
+
+@keyframes reactionPopBubble {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -100%) scale(0.3) translateY(20px);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(-50%, -100%) scale(1.15) translateY(-5px);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -100%) scale(1) translateY(0);
+  }
+  80% {
+    opacity: 1;
+    transform: translate(-50%, -100%) scale(1) translateY(-10px);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -100%) scale(0.8) translateY(-30px);
+  }
+}
+
+@keyframes floatEmojiParticle {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(0.6) rotate(0deg);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translate(var(--particle-dx-mid, 0px), -70px) scale(1.3) rotate(var(--particle-rot-mid, 0deg));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--particle-dx, 0px), -160px) scale(1.6) rotate(var(--particle-rot, 0deg));
+  }
+}
+
+.reaction-bubble-popup {
+  animation: reactionPopBubble 2.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.reaction-particle {
+  animation: floatEmojiParticle 1.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
+  pointer-events: none;
+}
+
+.reaction-dock-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  user-select: none;
+}
+
+.reaction-dock-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-4px) scale(1.18);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4);
+}
+
+.reaction-dock-btn:active {
+  transform: translateY(0) scale(0.95);
+}
+
+/* Match Room Lobby Responsiveness */
+.match-lobby-card {
+  padding: 32px;
+}
+
+.lobby-player-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 640px) {
+  .match-lobby-card {
+    padding: 20px 14px;
+  }
+
+  .lobby-player-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@keyframes winCardCenterPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
 

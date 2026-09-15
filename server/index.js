@@ -326,24 +326,27 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Send Chat / Reaction
+  // Send Chat / Reaction Fallback
   socket.on('SEND_CHAT', ({ roomCode, text, emote }) => {
     const info = roomManager.socketToRoom.get(socket.id);
     if (!info) return;
     const room = roomManager.rooms.get(roomCode);
     if (!room) return;
+    if (!text && !emote) return;
 
     const playerName = room.playerSlots[info.color]?.name || info.color;
     const chatItem = {
       sender: playerName,
       color: info.color,
-      text: text || null,
+      text: text ? text.trim() : null,
       emote: emote || null,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    room.chatHistory.push(chatItem);
-    if (room.chatHistory.length > 50) room.chatHistory.shift();
+    if (text) {
+      room.chatHistory.push(chatItem);
+      if (room.chatHistory.length > 50) room.chatHistory.shift();
+    }
 
     io.to(roomCode).emit('CHAT_MESSAGE', chatItem);
   });
@@ -395,6 +398,46 @@ io.on('connection', (socket) => {
     room.chatHistory.push(chatItem);
     if (room.chatHistory.length > 50) room.chatHistory.shift();
     io.to(roomCode).emit('CHAT_MESSAGE', chatItem);
+  });
+
+  // Send Real-Time Reaction (No history stored)
+  socket.on('SEND_REACTION', (payload) => {
+    const { roomCode, reactionId } = payload || {};
+    const info = roomManager.socketToRoom.get(socket.id);
+    const room = roomManager.rooms.get(roomCode);
+    if (!room || !roomCode) return;
+
+    const fromColor = info ? info.color : (Object.keys(room.playerSlots).find(c => room.playerSlots[c]?.socketId === socket.id) || 'red');
+
+    const reactionMap = {
+      laugh: { emoji: '😂', label: 'Laugh' },
+      heart_eyes: { emoji: '😍', label: 'Heart Eyes' },
+      tongue: { emoji: '😜', label: 'Tongue Out' },
+      angry: { emoji: '😡', label: 'Angry' },
+      cry: { emoji: '😭', label: 'Cry' },
+      glasses: { emoji: '😎', label: 'Show Off' },
+      frightened: { emoji: '😱', label: 'Frightened' },
+      confused: { emoji: '😕', label: 'Confused' },
+      nervous: { emoji: '😬', label: 'Nervous' },
+      sad: { emoji: '🥺', label: 'Sad' }
+    };
+
+    const reaction = reactionMap[reactionId];
+    if (!reaction) return;
+
+    const senderName = room.playerSlots[fromColor]?.name || fromColor.toUpperCase();
+
+    console.log(`[REACTION] Room ${roomCode}: ${senderName} (${fromColor}) reacted with ${reaction.emoji}`);
+
+    // Broadcast reaction instantly to all players in room without saving to chat history
+    io.to(roomCode).emit('PLAYER_REACTED', {
+      id: `${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      fromColor,
+      senderName,
+      reactionId,
+      emoji: reaction.emoji,
+      label: reaction.label
+    });
   });
 
   // Disconnect handler

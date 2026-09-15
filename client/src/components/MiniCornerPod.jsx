@@ -15,6 +15,19 @@ const COLOR_BG_GRADIENT = {
   blue: 'linear-gradient(135deg, rgba(30, 144, 255, 0.22), rgba(15, 23, 42, 0.95))'
 };
 
+const REACTION_ITEMS = [
+  { id: 'laugh', emoji: '😂', label: 'Laugh' },
+  { id: 'heart_eyes', emoji: '😍', label: 'Love' },
+  { id: 'tongue', emoji: '😜', label: 'Tongue' },
+  { id: 'angry', emoji: '😡', label: 'Angry' },
+  { id: 'cry', emoji: '😭', label: 'Cry' },
+  { id: 'glasses', emoji: '😎', label: 'Show Off' },
+  { id: 'frightened', emoji: '😱', label: 'Scared' },
+  { id: 'confused', emoji: '😕', label: 'Confused' },
+  { id: 'nervous', emoji: '😬', label: 'Nervous' },
+  { id: 'sad', emoji: '🥺', label: 'Sad' }
+];
+
 function SpaciousDiceCube({ val, rolling, isMyTurn, canRoll, showingSixDelay, theme = 'standard', size = 34 }) {
   const getDiceDots = (num) => {
     switch (num) {
@@ -89,10 +102,13 @@ export default function MiniCornerPod({
   onRollDice,
   onSelectRoll,
   onOpenThrowMenu,
+  onOpenReactionPicker,
+  onSendReaction,
   onSubmitAppeal
 }) {
   const [rolling, setRolling] = useState(false);
   const [showingSixDelay, setShowingSixDelay] = useState(false);
+  const [showReactMenu, setShowReactMenu] = useState(false);
 
   const colorHex = COLOR_HEX[color] || '#818CF8';
   const playerName = player ? player.name : `Empty (${color.toUpperCase()})`;
@@ -151,7 +167,7 @@ export default function MiniCornerPod({
     displayDiceVal = isReadyToRoll ? null : ((currentDice !== null && currentDice !== undefined) ? currentDice : (dicePool[selectedRollIndex] || null));
   }
 
-  const showBalance = !gameState?.isHomeDiceSelectionMode && dicePool && dicePool.length > 1;
+  const showBalance = !gameState?.isHomeDiceSelectionMode && dicePool && dicePool.length > 0 && (!canRoll || dicePool.length > 1);
 
   const canAppealLastTurn = gameState?.canAppealLastTurn;
   const lastTurnOffendingColor = gameState?.lastTurnOffendingColor;
@@ -159,7 +175,6 @@ export default function MiniCornerPod({
   const amIOffender = lastTurnOffendingColor && ((isMe && color === lastTurnOffendingColor) || (gameState?.myColor === lastTurnOffendingColor));
   const isThisPodOffender = (lastTurnOffendingColor === color);
   
-  // Show Appeal button on player's own pod AND on the offending player's pod
   const canAppeal = canAppealLastTurn && !amIOffender && myAppealsLeft > 0 && (isMe || isThisPodOffender);
   
   const inDemo = gameState?.appealState?.inDemo;
@@ -169,6 +184,7 @@ export default function MiniCornerPod({
 
   return (
     <div
+      data-player-color={color}
       data-corner-pod={color}
       className={`mini-corner-pod ${isActive ? 'pod-active' : ''} ${isMyTurn ? 'my-pod-active' : ''}`}
       style={{
@@ -194,10 +210,8 @@ export default function MiniCornerPod({
         transition: 'all 0.25s ease'
       }}
     >
-      {/* 1st Line: Left = User Name, (YOU), 🎯 Throw | Right = ⚖️ Appeal / ⏳ Demo / TURN */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '6px' }}>
         
-        {/* Top Left: Avatar Dot, Player Name, (YOU), 🎯 Throw */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0, overflow: 'hidden' }}>
           <div style={{
             width: '7px',
@@ -254,40 +268,85 @@ export default function MiniCornerPod({
               🎯
             </button>
           )}
-        </div>
-
-        {/* Top Right: ⚖️ Appeal / ⏳ Demo / TURN badge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-          {canAppeal && (
+          {isMe && (onOpenReactionPicker || onSendReaction) && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (onSubmitAppeal) onSubmitAppeal();
+                sounds.playClick();
+                if (onOpenReactionPicker) {
+                    onOpenReactionPicker();
+                } else {
+                    setShowReactMenu(prev => !prev);
+                }
               }}
-              title="Appeal missed kill!"
+              title="React with Emoji"
               style={{
-                background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
-                border: '1px solid #FEF08A',
-                borderRadius: '16px',
-                color: '#FFFFFF',
-                fontSize: '0.65rem',
-                padding: '2px 7px',
+                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.35), rgba(168, 85, 247, 0.35))',
+                border: '1px solid rgba(255, 255, 255, 0.35)',
+                borderRadius: '5px',
+                color: '#FFF',
+                fontSize: '0.7rem',
+                padding: '1px 5px',
                 cursor: 'pointer',
-                fontWeight: 900,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '2px',
-                boxShadow: '0 0 10px rgba(245, 158, 11, 0.85)',
-                animation: 'pulse 1s infinite',
+                lineHeight: 1,
                 flexShrink: 0,
-                whiteSpace: 'nowrap'
+                transition: 'all 0.15s ease'
               }}
             >
-              <span>⚖️</span>
-              <span>Appeal</span>
+              😂
             </button>
           )}
 
+          {isMe && showReactMenu && !onOpenReactionPicker && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                marginTop: '4px',
+                background: 'rgba(15, 23, 42, 0.95)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1.5px solid rgba(255, 255, 255, 0.25)',
+                borderRadius: '12px',
+                padding: '4px 6px',
+                display: 'flex',
+                gap: '4px',
+                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.8), 0 0 15px rgba(99, 102, 241, 0.4)',
+                zIndex: 1000,
+                animation: 'popIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {REACTION_ITEMS.map((r) => (
+                <button
+                  key={r.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    sounds.playClick();
+                    if (onSendReaction) onSendReaction(r.id);
+                    setShowReactMenu(false);
+                  }}
+                  title={r.label}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '1.1rem',
+                    padding: '3px 5px',
+                    cursor: 'pointer',
+                    transition: 'transform 0.15s ease'
+                  }}
+                  className="reaction-dock-btn"
+                >
+                  {r.emoji}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
           {inDemo && (isAppealingColor || isOffendingColor) && (
             <span style={{
               background: '#4F46E5',
@@ -379,6 +438,9 @@ export default function MiniCornerPod({
                 padding: '1px 0'
               }}
             >
+              <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#94A3B8', marginRight: '1px' }}>
+                Bal:
+              </span>
               {dicePool.map((val, idx) => {
                 const isSelected = idx === selectedRollIndex;
                 const isSix = val === 6;

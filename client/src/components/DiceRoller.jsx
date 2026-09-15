@@ -156,7 +156,7 @@ export default function DiceRoller({
     }
   }
 
-  const showBalance = !isHomeDiceSelectionMode && !allTokensInHome && dicePool && dicePool.length > 1;
+  const showBalance = !isHomeDiceSelectionMode && !allTokensInHome && dicePool && dicePool.length > 0 && (!canRoll || dicePool.length > 1);
 
   const diceSize = compact ? 42 : 68;
 
