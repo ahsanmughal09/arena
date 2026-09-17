@@ -6,6 +6,7 @@ import HomeLobby from './components/HomeLobby';
 import GameLobby from './components/GameLobby';
 import Board4P from './components/Board4P';
 import Board6P from './components/Board6P';
+import BoardSnakesLadders from './components/BoardSnakesLadders';
 import MiniCornerPod from './components/MiniCornerPod';
 import ChatPanel from './components/ChatPanel';
 import VictoryModal from './components/VictoryModal';
@@ -412,15 +413,15 @@ export default function App() {
   }, []);
 
   // Handlers
-  const handleCreateRoom = ({ name, mode, teamMode, turnTimer, diceCount, extraTurnOnKill, extraTurnOnHome, killRequiredToEnterHome }) => {
-    socket.emit('CREATE_ROOM', { name, mode, teamMode, turnTimer, diceCount, extraTurnOnKill, extraTurnOnHome, killRequiredToEnterHome }, (res) => {
+  const handleCreateRoom = (roomConfig) => {
+    socket.emit('CREATE_ROOM', roomConfig, (res) => {
       if (res.success) {
         setRoomCode(res.roomCode);
         setMyColor(res.color);
         setSlots(res.slots);
         setSettings(res.settings);
         setGameState(res.state);
-        sessionStorage.setItem('ludo_session', JSON.stringify({ roomCode: res.roomCode, color: res.color, name }));
+        sessionStorage.setItem('ludo_session', JSON.stringify({ roomCode: res.roomCode, color: res.color, name: roomConfig.name }));
         setView('lobby');
       } else {
         showAlert('Create Room Failed', res.error || 'Failed to create room.', 'error');
@@ -945,6 +946,28 @@ export default function App() {
                 />
               );
             };
+
+            const isSnakesGame = 
+              settings?.gameType === 'snakes_and_ladders' || 
+              gameState?.gameType === 'snakes_and_ladders' ||
+              gameState?.snakes !== undefined ||
+              gameState?.ladders !== undefined;
+
+            if (isSnakesGame) {
+              return (
+                <BoardSnakesLadders
+                  gameState={gameState}
+                  myColor={myColor}
+                  slots={slots}
+                  timeLeft={timeLeft}
+                  onRollDice={handleRollDice}
+                  onMoveToken={handleMoveToken}
+                  onOpenThrowMenu={handleOpenThrowMenu}
+                  onOpenReactionPicker={() => setIsReactionPickerOpen(true)}
+                  onToggleMobileChat={() => setIsMobileChatOpen(prev => !prev)}
+                />
+              );
+            }
 
             return (
               <div className="game-main-layout">

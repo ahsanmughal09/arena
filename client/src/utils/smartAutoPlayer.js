@@ -63,9 +63,15 @@ export function getSmartAutoMove(gameState, myColor) {
     for (let rIdx = 0; rIdx < dicePool.length; rIdx++) {
       const roll = dicePool[rIdx];
 
-      // Check basic move validity
+      // Check basic move validity & respect server authoritative validMoves if present
       if (!canTokenMove(currentStep, roll, killRequired, hasKill, finishStep, mainTrackMax)) {
         continue;
+      }
+
+      if (rIdx === (gameState.selectedRollIndex || 0) && Array.isArray(gameState.validMoves)) {
+        if (!gameState.validMoves.includes(tIdx)) {
+          continue;
+        }
       }
 
       const nextStep = (currentStep === -1) ? 0 : (currentStep + roll);

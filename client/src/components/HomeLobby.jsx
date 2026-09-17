@@ -8,7 +8,10 @@ export default function HomeLobby({ onCreateRoom, onJoinRoom, showAlert }) {
   const [joinCode, setJoinCode] = useState('');
   const [tab, setTab] = useState('create'); // 'create' or 'join'
   
-  // Settings for Create Room (Locked to 4P)
+  // Game Type Selection ('ludo' or 'snakes_and_ladders')
+  const [gameType, setGameType] = useState('ludo');
+
+  // Settings for Create Room
   const [mode] = useState('4P');
   const [teamMode, setTeamMode] = useState('2v2'); // 4P: 'solo', '2v2'
   const [turnTimer, setTurnTimer] = useState('30');
@@ -18,6 +21,17 @@ export default function HomeLobby({ onCreateRoom, onJoinRoom, showAlert }) {
   const [extraTurnOnKill, setExtraTurnOnKill] = useState(true);
   const [extraTurnOnHome, setExtraTurnOnHome] = useState(true);
   const [killRequiredToEnterHome, setKillRequiredToEnterHome] = useState(true);
+
+  const handleGameTypeChange = (type) => {
+    sounds.playClick();
+    setGameType(type);
+    if (type === 'snakes_and_ladders') {
+      setTeamMode('solo');
+      setDiceCount(1);
+    } else {
+      setTeamMode('2v2');
+    }
+  };
 
   const handleCreateSubmit = (e) => {
     e.preventDefault();
@@ -30,10 +44,11 @@ export default function HomeLobby({ onCreateRoom, onJoinRoom, showAlert }) {
     sounds.playClick();
     onCreateRoom({ 
       name: name.trim(), 
+      gameType,
       mode, 
-      teamMode, 
+      teamMode: gameType === 'snakes_and_ladders' ? 'solo' : teamMode, 
       turnTimer, 
-      diceCount,
+      diceCount: gameType === 'snakes_and_ladders' ? 1 : diceCount,
       extraTurnOnKill, 
       extraTurnOnHome, 
       killRequiredToEnterHome 
@@ -132,55 +147,115 @@ export default function HomeLobby({ onCreateRoom, onJoinRoom, showAlert }) {
 
         {tab === 'create' ? (
           <form onSubmit={handleCreateSubmit}>
-            {/* Team Mode Selection */}
+            {/* Game Type Selection */}
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#CBD5E1', marginBottom: '8px' }}>
-                <Shield size={16} color="#2ED573" /> Teaming & Match Rules
+                🎮 Select Game Mode
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <button 
                   type="button" 
-                  onClick={() => { sounds.playClick(); setTeamMode('2v2'); }}
-                  className={`glass-btn ${teamMode === '2v2' ? 'primary' : ''}`}
-                  style={{ justifyContent: 'center' }}
+                  onClick={() => handleGameTypeChange('ludo')}
+                  className="glass-btn"
+                  style={{
+                    justifyContent: 'center',
+                    padding: '14px 10px',
+                    fontWeight: 800,
+                    fontSize: '0.95rem',
+                    background: gameType === 'ludo' ? 'linear-gradient(135deg, #6366F1, #4F46E5)' : 'rgba(30, 41, 59, 0.6)',
+                    border: gameType === 'ludo' ? '2px solid #818CF8' : '1px solid rgba(255, 255, 255, 0.15)',
+                    boxShadow: gameType === 'ludo' ? '0 0 16px rgba(99, 102, 241, 0.5)' : 'none',
+                    color: '#FFF'
+                  }}
                 >
-                  2v2 Diagonal Teams
+                  🎲 Ludo Arena {gameType === 'ludo' ? '✓' : ''}
                 </button>
                 <button 
                   type="button" 
-                  onClick={() => { sounds.playClick(); setTeamMode('solo'); }}
-                  className={`glass-btn ${teamMode === 'solo' ? 'primary' : ''}`}
-                  style={{ justifyContent: 'center' }}
+                  onClick={() => handleGameTypeChange('snakes_and_ladders')}
+                  className="glass-btn"
+                  style={{
+                    justifyContent: 'center',
+                    padding: '14px 10px',
+                    fontWeight: 800,
+                    fontSize: '0.95rem',
+                    background: gameType === 'snakes_and_ladders' ? 'linear-gradient(135deg, #10B981, #059669)' : 'rgba(30, 41, 59, 0.6)',
+                    border: gameType === 'snakes_and_ladders' ? '2px solid #34D399' : '1px solid rgba(255, 255, 255, 0.15)',
+                    boxShadow: gameType === 'snakes_and_ladders' ? '0 0 16px rgba(16, 185, 129, 0.5)' : 'none',
+                    color: '#FFF'
+                  }}
                 >
-                  Free For All (1v1v1v1)
+                  🐍 Snakes & Ladders {gameType === 'snakes_and_ladders' ? '✓' : ''}
                 </button>
               </div>
             </div>
 
-            {/* Dice Count Selection */}
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#CBD5E1', marginBottom: '8px' }}>
-                🎲 Dice Mode (1 Dice or 2 Dice)
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <button 
-                  type="button" 
-                  onClick={() => { sounds.playClick(); setDiceCount(1); }}
-                  className={`glass-btn ${diceCount === 1 ? 'primary' : ''}`}
-                  style={{ justifyContent: 'center' }}
-                >
-                  1 Dice (Classic)
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => { sounds.playClick(); setDiceCount(2); }}
-                  className={`glass-btn ${diceCount === 2 ? 'primary' : ''}`}
-                  style={{ justifyContent: 'center' }}
-                >
-                  2 Dice (Dual Roll)
-                </button>
+            {gameType === 'ludo' ? (
+              <>
+                {/* Team Mode Selection */}
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#CBD5E1', marginBottom: '8px' }}>
+                    <Shield size={16} color="#2ED573" /> Teaming & Match Rules
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <button 
+                      type="button" 
+                      onClick={() => { sounds.playClick(); setTeamMode('2v2'); }}
+                      className={`glass-btn ${teamMode === '2v2' ? 'primary' : ''}`}
+                      style={{ justifyContent: 'center' }}
+                    >
+                      2v2 Diagonal Teams
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => { sounds.playClick(); setTeamMode('solo'); }}
+                      className={`glass-btn ${teamMode === 'solo' ? 'primary' : ''}`}
+                      style={{ justifyContent: 'center' }}
+                    >
+                      Free For All (1v1v1v1)
+                    </button>
+                  </div>
+                </div>
+
+                {/* Dice Count Selection */}
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#CBD5E1', marginBottom: '8px' }}>
+                    🎲 Dice Mode (1 Dice or 2 Dice)
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <button 
+                      type="button" 
+                      onClick={() => { sounds.playClick(); setDiceCount(1); }}
+                      className={`glass-btn ${diceCount === 1 ? 'primary' : ''}`}
+                      style={{ justifyContent: 'center' }}
+                    >
+                      1 Dice (Classic)
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => { sounds.playClick(); setDiceCount(2); }}
+                      className={`glass-btn ${diceCount === 2 ? 'primary' : ''}`}
+                      style={{ justifyContent: 'center' }}
+                    >
+                      2 Dice (Dual Roll)
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* Snakes & Ladders Locked Rules Summary */
+              <div style={{ marginBottom: '20px', background: 'rgba(15, 23, 42, 0.5)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#4ADE80', marginBottom: '6px' }}>
+                  🐍 Snakes & Ladders Rules (4 Players Max)
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#CBD5E1', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span>• 👤 <b>Free For All (No Teaming)</b> - 4 Players</span>
+                  <span>• 🎲 <b>Single Dice</b> - Rolling a 6 gives an extra turn</span>
+                  <span>• 🪜 <b>Ladders Climb</b> up & 🐍 <b>Snakes Bite</b> down</span>
+                  <span>• 🎯 <b>Exact 100</b> required to reach the Goal!</span>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Turn Timer Selection */}
             <div style={{ marginBottom: '20px' }}>
@@ -215,44 +290,46 @@ export default function HomeLobby({ onCreateRoom, onJoinRoom, showAlert }) {
               </div>
             </div>
 
-            {/* Custom House Rules Section */}
-            <div style={{ marginBottom: '28px', background: 'rgba(15, 23, 42, 0.5)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 700, color: '#818CF8', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                ⚙️ Custom House Rules
-              </label>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.85rem', color: '#E2E8F0', cursor: 'pointer' }}>
-                  <span>⚡ Extra Turn on Kill (Capture)</span>
-                  <input 
-                    type="checkbox" 
-                    checked={extraTurnOnKill} 
-                    onChange={(e) => { sounds.playClick(); setExtraTurnOnKill(e.target.checked); }} 
-                    style={{ width: '18px', height: '18px', accentColor: '#6366F1', cursor: 'pointer' }}
-                  />
+            {/* Custom House Rules Section (Only for Ludo) */}
+            {gameType === 'ludo' && (
+              <div style={{ marginBottom: '28px', background: 'rgba(15, 23, 42, 0.5)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 700, color: '#818CF8', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  ⚙️ Custom House Rules
                 </label>
 
-                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.85rem', color: '#E2E8F0', cursor: 'pointer' }}>
-                  <span>🏠 Extra Turn on Home Finish</span>
-                  <input 
-                    type="checkbox" 
-                    checked={extraTurnOnHome} 
-                    onChange={(e) => { sounds.playClick(); setExtraTurnOnHome(e.target.checked); }} 
-                    style={{ width: '18px', height: '18px', accentColor: '#6366F1', cursor: 'pointer' }}
-                  />
-                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.85rem', color: '#E2E8F0', cursor: 'pointer' }}>
+                    <span>⚡ Extra Turn on Kill (Capture)</span>
+                    <input 
+                      type="checkbox" 
+                      checked={extraTurnOnKill} 
+                      onChange={(e) => { sounds.playClick(); setExtraTurnOnKill(e.target.checked); }} 
+                      style={{ width: '18px', height: '18px', accentColor: '#6366F1', cursor: 'pointer' }}
+                    />
+                  </label>
 
-                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.85rem', color: '#E2E8F0', cursor: 'pointer' }}>
-                  <span>🎯 Must Kill Opponent to Enter Home</span>
-                  <input 
-                    type="checkbox" 
-                    checked={killRequiredToEnterHome} 
-                    onChange={(e) => { sounds.playClick(); setKillRequiredToEnterHome(e.target.checked); }} 
-                    style={{ width: '18px', height: '18px', accentColor: '#6366F1', cursor: 'pointer' }}
-                  />
-                </label>
+                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.85rem', color: '#E2E8F0', cursor: 'pointer' }}>
+                    <span>🏠 Extra Turn on Home Finish</span>
+                    <input 
+                      type="checkbox" 
+                      checked={extraTurnOnHome} 
+                      onChange={(e) => { sounds.playClick(); setExtraTurnOnHome(e.target.checked); }} 
+                      style={{ width: '18px', height: '18px', accentColor: '#6366F1', cursor: 'pointer' }}
+                    />
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.85rem', color: '#E2E8F0', cursor: 'pointer' }}>
+                    <span>🎯 Must Kill Opponent to Enter Home</span>
+                    <input 
+                      type="checkbox" 
+                      checked={killRequiredToEnterHome} 
+                      onChange={(e) => { sounds.playClick(); setKillRequiredToEnterHome(e.target.checked); }} 
+                      style={{ width: '18px', height: '18px', accentColor: '#6366F1', cursor: 'pointer' }}
+                    />
+                  </label>
+                </div>
               </div>
-            </div>
+            )}
 
             <button type="submit" className="glass-btn primary" style={{ width: '100%', justifyContent: 'center', padding: '14px', fontSize: '1.1rem' }}>
               <Play size={20} /> Create Room Lobby

@@ -48,12 +48,16 @@ export default function GameLobby({ roomCode, slots, settings, isHost, myColor, 
         {/* Room Info */}
         <div style={{ display: 'flex', justifyContent: 'space-around', background: 'rgba(15, 23, 42, 0.5)', padding: '12px', borderRadius: '12px', marginBottom: '24px' }}>
           <div style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: '0.75rem', color: '#94A3B8', textTransform: 'uppercase' }}>Mode</span>
-            <div style={{ fontWeight: 700, color: '#FFF' }}>{settings.mode} ({settings.teamMode})</div>
+            <span style={{ fontSize: '0.75rem', color: '#94A3B8', textTransform: 'uppercase' }}>Game</span>
+            <div style={{ fontWeight: 700, color: '#FFF' }}>
+              {settings.gameType === 'snakes_and_ladders' ? '🐍 Snakes & Ladders' : '🎲 Ludo Arena'}
+            </div>
           </div>
           <div style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: '0.75rem', color: '#94A3B8', textTransform: 'uppercase' }}>Timer</span>
-            <div style={{ fontWeight: 700, color: '#FFF' }}>{settings.turnTimer}s</div>
+            <span style={{ fontSize: '0.75rem', color: '#94A3B8', textTransform: 'uppercase' }}>Rules</span>
+            <div style={{ fontWeight: 700, color: '#FFF' }}>
+              {settings.gameType === 'snakes_and_ladders' ? '4P Solo' : `${settings.mode} (${settings.teamMode})`}
+            </div>
           </div>
           <div style={{ textAlign: 'center' }}>
             <span style={{ fontSize: '0.75rem', color: '#94A3B8', textTransform: 'uppercase' }}>Players</span>

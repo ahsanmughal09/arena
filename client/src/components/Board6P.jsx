@@ -146,6 +146,7 @@ function canTokenMoveWithRoll6P(step, roll, killRequired, hasKill, color, gameSt
 
 function canConsumeAllDice6P(currentTokens, remainingDicePool, hasKill, killRequired, color, gameState) {
   if (remainingDicePool.length === 0) return true;
+  if (currentTokens && currentTokens.every(s => s === 76)) return true;
 
   for (let rIdx = 0; rIdx < remainingDicePool.length; rIdx++) {
     const roll = remainingDicePool[rIdx];
